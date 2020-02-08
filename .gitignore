@@ -1,3 +1,25 @@
+.vscode/
+Tmp/
+
+# ignore latexmk temporary files
+*.gz
+*.zip
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.out
+*.toc
+*.xdv
+
+# ignore compiled docuemnt within root
+Thesis.pdf
+
+# ignore office temp files
 ~$*.doc*
 ~$*.ppt*
 
