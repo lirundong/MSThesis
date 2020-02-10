@@ -1,7 +1,10 @@
 # 项目修改记录
 
-`sht-thesis` 项目派生于 `ucasthesis`，一个在 GPLv3 License 下分发的项目。根据该许可证
-条款，`sht-thesis` 项目列出基于 `ucasthesis` (commit `faad94b` 之后) 的所有修改条目：
+`sht-thesis` 项目派生于 `ucasthesis`，一个在 GPLv3 License 下分发的项目。根据该许可证条款，`sht-thesis` 项目列出基于 `ucasthesis` (commit `faad94b` 之后) 的所有修改条目：
+
+## 2020-02-10
+
+1. 在 Style/artratex.sty 中取消等宽字体设置，默认不开启 `font=noto`；
 
 ## 2020-02-07
 

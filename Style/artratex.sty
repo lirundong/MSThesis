@@ -395,9 +395,12 @@
     }
     %- Text font: Chinese
     \ifartx@windows%
-        \setCJKmainfont{SimSun}[AutoFakeBold=2.5,ItalicFont=KaiTi]%
+        \setCJKmainfont{SimSun}[
+            AutoFakeBold   = 2.5,
+            ItalicFont     = KaiTi,
+        ]%
         \setCJKsansfont{SimHei}[AutoFakeBold=2.5]%
-        \setCJKmonofont{FangSong}%
+        \setCJKmonofont{FangSong}[AutoFakeBold=2.5]%
     \else\ifartx@mac%
         \setCJKmainfont{Songti SC}[%
             UprightFont    = * Light,
@@ -408,14 +411,14 @@
         \setCJKsansfont{Heiti SC}[BoldFont = * Medium]%
         \setCJKmonofont{STFangsong}%
     \else\ifartx@adobe%
-        \setCJKmainfont{AdobeSongStd-Light}[AutoFakeBold=2.5,ItalicFont=AdobeKaitiStd-Regular]%
+        \setCJKmainfont{AdobeSongStd-Light}[
+            AutoFakeBold = 2.5,
+            ItalicFont   = AdobeKaitiStd-Regular
+        ]%
         \setCJKsansfont{AdobeHeitiStd-Regular}[AutoFakeBold=2.5]%
         \setCJKmonofont{AdobeFangsongStd-Regular}%
     \fi\fi\fi
 \fi
-
-%-> Default mono-space font
-\setmonofont{Courier}
 
 %-
 %-> Bibliography processor and package
