@@ -1,0 +1,53 @@
+\ProvidesExplFile{ctex-fontset-source.def}
+  {\ExplFileDate}{2.4.16}{\ExplFileDescription}
+\sys_if_engine_pdftex:TF
+  { \ctex_fontset_error:n { source } }
+  {
+    \sys_if_engine_uptex:TF
+      { \ctex_fontset_error:n { source } }
+      {
+        \setCJKmainfont
+          [
+            Path = Fonts/ ,
+            BoldFont = SourceHanSerifSC-Bold.otf ,
+            ItalicFont = FZKTK.TTF ,
+            BoldItalicFont = FZXKTK.TTF ,
+          ] { SourceHanSerifSC-Regular.otf }
+        \setCJKsansfont 
+          [
+            Path = Fonts/ ,
+            BoldFont = SourceHanSansSC-Bold.otf
+          ] { SourceHanSansSC-Regular.otf }
+        \setCJKmonofont
+          [
+            Path = Fonts/ ,
+            BoldFont = HYD4GJ.TTF ,
+          ] { FZFSK.TTF }
+        \setCJKfamilyfont { zhsong }
+          [
+            Path = Fonts/ ,
+            BoldFont = SourceHanSerifSC-Bold.otf ,
+            ItalicFont = FZKTK.TTF ,
+            BoldItalicFont = FZXKTK.TTF ,
+          ] { SourceHanSerifSC-Regular.otf }
+        \setCJKfamilyfont { zhhei }
+          [
+            Path = Fonts/ ,
+            BoldFont = SourceHanSansSC-Bold.otf
+          ] { SourceHanSansSC-Regular.otf }
+        \setCJKfamilyfont { zhfs }
+          [
+            Path = Fonts/ ,
+            BoldFont = HYD4GJ.TTF ,
+          ] { FZFSK.TTF }
+        \setCJKfamilyfont { zhkai }
+          [
+            Path = Fonts/ ,
+            BoldFont = FZXKTK.TTF ,
+          ]  { FZKTK.TTF }
+      }
+  }
+\NewDocumentCommand \songti   { } { \CJKfamily { zhsong } }
+\NewDocumentCommand \heiti    { } { \CJKfamily { zhhei } }
+\NewDocumentCommand \fangsong { } { \CJKfamily { zhfs } }
+\NewDocumentCommand \kaishu   { } { \CJKfamily { zhkai } }

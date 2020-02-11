@@ -23,3 +23,6 @@ Thesis.pdf
 ~$*.doc*
 ~$*.ppt*
 
+# ignore font files
+*.TTF
+*.otf
