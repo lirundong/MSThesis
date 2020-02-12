@@ -599,7 +599,7 @@
 %- chapter
 \ctexset {
     chapter = {
-        format = \linespread{1.0}\zihao{4}\bfseries\sffamily\centering,
+        format = \linespread{1.0}\zihao{4}\bfseries\heiti\centering,
         nameformat = {},
         titleformat = {},
         number = \arabic{chapter},
@@ -613,7 +613,7 @@
 %- section
 \ctexset {
     section = {
-        format = \linespread{1.0}\zihao{-4}\sffamily\raggedright,
+        format = \linespread{1.0}\zihao{-4}\heiti\raggedright,
         numberformat = \rmfamily,
         aftername = \quad,
         beforeskip = {24pt},
@@ -623,7 +623,7 @@
 %- subsection
 \ctexset {
     subsection = {
-        format = \linespread{1.0}\zihao{-4}\sffamily\raggedright,
+        format = \linespread{1.0}\zihao{-4}\heiti\raggedright,
         numberformat = \rmfamily,
         aftername = \quad,
         beforeskip = {12pt},
@@ -633,7 +633,7 @@
 %- subsubsection
 \ctexset {
     subsubsection = {
-        format = \linespread{1.0}\zihao{-4}\sffamily\raggedright,
+        format = \linespread{1.0}\zihao{-4}\heiti\raggedright,
         numberformat = \rmfamily,
         aftername = \quad,
         beforeskip = {12pt},
@@ -673,7 +673,7 @@
         {\leftskip #2\relax \rightskip \@tocrmarg \parfillskip -\rightskip
         \parindent #2\relax\@afterindenttrue
         \interlinepenalty\@M
-        \leavevmode \zihao{-4}\sffamily
+        \leavevmode \zihao{-4}\heiti
         \@tempdima #3\relax
         \advance\leftskip \@tempdima \null\nobreak\hskip -\leftskip
         {#4}\nobreak
@@ -693,7 +693,7 @@
             \parindent \z@ \rightskip \@pnumwidth
             \parfillskip -\@pnumwidth
             {\leavevmode
-            \zihao{4}\sffamily #1
+            \zihao{4}\heiti #1
             \leaders\hbox{$\m@th\mkern \@dotsep \cdot\mkern \@dotsep$}% add dotted toc line
             \hfil \hb@xt@\@pnumwidth{\hss #2}}\par
             \nobreak
@@ -711,7 +711,7 @@
         \begingroup
             \parindent \z@ \rightskip \@pnumwidth
             \parfillskip -\@pnumwidth
-            \leavevmode \zihao{4}\sffamily
+            \leavevmode \zihao{4}\heiti
             \advance\leftskip\@tempdima
             \hskip -\leftskip
             #1\nobreak

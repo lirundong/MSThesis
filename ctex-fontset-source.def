@@ -1,5 +1,5 @@
 \ProvidesExplFile{ctex-fontset-source.def}
-  {\ExplFileDate}{2.4.16}{\ExplFileDescription}
+  {\ExplFileDate}{2.12.20}{\ExplFileDescription}
 \sys_if_engine_pdftex:TF
   { \ctex_fontset_error:n { source } }
   {
@@ -10,8 +10,8 @@
           [
             Path = Fonts/ ,
             BoldFont = SourceHanSerifSC-Bold.otf ,
-            ItalicFont = FZKTK.TTF ,
-            BoldItalicFont = FZXKTK.TTF ,
+            ItalicFont = STKaitiSC-Regular.TTF ,
+            BoldItalicFont = STKaitiSC-Bold.TTF ,
           ] { SourceHanSerifSC-Regular.otf }
         \setCJKsansfont 
           [
@@ -27,8 +27,8 @@
           [
             Path = Fonts/ ,
             BoldFont = SourceHanSerifSC-Bold.otf ,
-            ItalicFont = FZKTK.TTF ,
-            BoldItalicFont = FZXKTK.TTF ,
+            ItalicFont = STKaitiSC-Regular.TTF ,
+            BoldItalicFont = STKaitiSC-Bold.TTF ,
           ] { SourceHanSerifSC-Regular.otf }
         \setCJKfamilyfont { zhhei }
           [
@@ -43,8 +43,8 @@
         \setCJKfamilyfont { zhkai }
           [
             Path = Fonts/ ,
-            BoldFont = FZXKTK.TTF ,
-          ]  { FZKTK.TTF }
+            BoldFont = STKaitiSC-Bold.TTF ,
+          ]  { STKaitiSC-Regular.TTF }
       }
   }
 \NewDocumentCommand \songti   { } { \CJKfamily { zhsong } }

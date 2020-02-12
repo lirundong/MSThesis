@@ -2,10 +2,10 @@
 
 Fonts
 ├── FZFSK.TTF
-├── FZKTK.TTF
-├── FZXKTK.TTF
 ├── HYD4GJ.TTF
 ├── README.txt
+├── STKaitiSC-Bold.TTF
+├── STKaitiSC-Regular.TTF
 ├── SourceHanSansSC-Bold.otf
 ├── SourceHanSansSC-Regular.otf
 ├── SourceHanSerifSC-Bold.otf

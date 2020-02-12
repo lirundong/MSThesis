@@ -5,6 +5,14 @@
 ## 2020-02-12
 
 1. 支持将字体文件放置在在 `Fonts` 文件夹中，修改字体配置文件名为 `ctex-fontset-source.def`；
+2. 将 `ctex-fontset-source.def` 中楷体替换为华文楷体，以确保楷体正确加粗；
+3. 修改 `Style/artratex.sty`，将西文字体修改为：
+   - Serif: XITS
+   - Sans Serif: TeX Gyre Hero
+   - Monospace: TeX Gyre Cursor
+
+   同时，去除对 `\mathsf` 和 `\mathtt` 的不正确字形覆盖； 
+4. 修改 `Style/ucasthesis.cls` 中目录及章节标题的 `format`，将 `\sffamily` 替换为 `heiti`，以确保在西文非衬线字体被设为 TeX Gyre Hero 后，各级标题仍以西文衬线+中文黑体排版；
 
 ## 2020-02-10
 

@@ -1,5 +1,6 @@
-.vscode/
-Tmp/
+.vscode
+.DS_Store
+Tmp
 
 # ignore latexmk temporary files
 *.gz
