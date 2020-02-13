@@ -1,10 +1,39 @@
-# \[施工中\] ShangHaiTech university THESIS (sht-thesis)
+# ShangHaiTech university THESIS (sht-thesis)
 
 `sht-thesis` 项目派生于 [`mohuangrui/ucasthesis`](https://github.com/mohuangrui/ucasthesis)，是根据《上海科技大学研究生学位论文撰写规范（初稿）》编写的、适用于上海科技大学学位论文写作的**非官方** LaTeX 模板。
 
 ## 模板下载
 
-请在页面右边点击：**Clone or download -> Download Zip**
+- 稳定版：
+  - GitHub Release: 请移步至 [release](https://github.com/CrazyRundong/sht-thesis/releases) 页面，根据发布信息下载相应文件；
+  - CTAN: TODO
+- 开发版：直接克隆 master 分支
+  ```bash
+  git clone https://github.com/CrazyRundong/sht-thesis.git
+  ```
+
+## 快速上手
+
+在下载或克隆代码库后，依次
+
+0. **完整安装**一个现代化的 TeX 发行版：
+   - Windows 或 Linux：[TeX Live](https://www.tug.org/texlive/)
+   - macOS：[MacTeX](https://www.tug.org/mactex/)
+1. 下载所需字体文件（[GitHub Release](https://github.com/CrazyRundong/sht-thesis/releases/download/v0.1.0/sht-fonts-v0.1.0.tar.gz) 或 [OneDrive](https://1drv.ms/u/s!Aucomy63mN0inHGS13-EgyE7GTrL?e=WFvhpL)），将解压后的字体放置在项目根目录的 Fonts 文件夹内；
+2. 使用 XeTeX 或 LuaTeX 引擎编译项目（**注意**：不支持 pdfTeX）:
+   - Windows: 双击 `artratex.bat` 即可完成编译；
+   - Linux 或 macOS: 以 XeTeX 引擎为例，使用项目自带的编译脚本：
+     ```bash
+     ./artratex.sh ax
+     ```
+     编译所得文件在 Tmp/Thesis.pdf；或使用 latexmk：
+     ```bash
+     latexmk --pdfxe Thesis.tex
+     # 若使用 LuaTeX 引擎，则执行
+     # latexmk --pdflua Thesis.tex
+     ```
+     编译所得文件在根目录下的 Thesis.pdf；
+3. 组成论文的各 `*.tex` 文件在 Tex 目录下。开始愉快的写作之旅吧 :smirk:
 
 ## 重要建议
 

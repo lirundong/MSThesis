@@ -301,12 +301,12 @@
 
         \def\tabcolsep{1pt}
         \def\arraystretch{1.3}
-        \begin{tabular}{lc}
-            \ucas@label@ch@author & \ulenhance[1.2pt]{\ulextend{\ucas@value@ch@author}}\\
-            \ucas@label@ch@advisor & \ucaslntotab[1.2pt]{\ucas@value@ch@advisor}\\
-            \ucas@label@ch@degree & \ulenhance[1.2pt]{\ulextend{\ucas@value@ch@degreetype\ucas@value@ch@degree}}\\
-            \ucas@label@ch@major & \ulenhance[1.2pt]{\ulextend{\ucas@value@ch@major}}\\
-            \ucas@label@ch@institute & \ucaslntotab[1.2pt]{\ucas@value@ch@institute}\\
+        \begin{tabular}{llc}
+            \ucas@label@ch@author & \multicolumn{2}{c}{\ulenhance[1.2pt]{\ulextend{\ucas@value@ch@author}}}\\
+            \ucas@label@ch@advisor & \multicolumn{2}{c}{\ulenhance[1.2pt]{\ulextend{\ucas@value@ch@advisor}}}\\
+            \ucas@label@ch@degree & \multicolumn{2}{c}{\ulenhance[1.2pt]{\ulextend{\ucas@value@ch@degreetype\ucas@value@ch@degree}}}\\
+            \ucas@label@ch@major & \multicolumn{2}{c}{\ulenhance[1.2pt]{\ulextend{\ucas@value@ch@major}}}\\
+            \multicolumn{2}{l}{\ucas@label@ch@institute} & \ulenhance[1.2pt]{\ulextend[318pt]{\ucas@value@ch@institute}}\\
         \end{tabular}
 
         \vspace*{\stretch{4}}

@@ -4,8 +4,11 @@
 
 ## 2020-02-13
 
+> Release: v0.1.0
+
 1. 修改 Style/artratex.sty 和 Style/ucasthesis.cls，配置 `unicode-math` 中 `\math***` 宏的排版方式为 `sym`，以解决附录 A.2 中 `\mathbf` 无效，以及各 `\math***` 宏无法正确设定希腊字母及符号的问题；
 2. 移除 pdfTeX 支持（使用 pdfTeX 编译将直接报错），将针对 `unicode-math` 定义的数学宏移至 Style/artracom.sty 中；
+3. 修改 Style/ucasthesis.cfg 和 Style/ucasthesis.cls，使封面符合上科大规范需求；
 
 ## 2020-02-12
 
