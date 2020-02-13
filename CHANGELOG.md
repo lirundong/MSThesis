@@ -2,6 +2,11 @@
 
 `sht-thesis` 项目派生于 `ucasthesis`，一个在 GPLv3 License 下分发的项目。根据该许可证条款，`sht-thesis` 项目列出基于 `ucasthesis` (commit `faad94b` 之后) 的所有修改条目：
 
+## 2020-02-13
+
+1. 修改 Style/artratex.sty 和 Style/ucasthesis.cls，配置 `unicode-math` 中 `\math***` 宏的排版方式为 `sym`，以解决附录 A.2 中 `\mathbf` 无效，以及各 `\math***` 宏无法正确设定希腊字母及符号的问题；
+2. 移除 pdfTeX 支持（使用 pdfTeX 编译将直接报错），将针对 `unicode-math` 定义的数学宏移至 Style/artracom.sty 中；
+
 ## 2020-02-12
 
 1. 支持将字体文件放置在在 `Fonts` 文件夹中，修改字体配置文件名为 `ctex-fontset-source.def`；
@@ -12,7 +17,7 @@
    - Monospace: TeX Gyre Cursor
 
    同时，去除对 `\mathsf` 和 `\mathtt` 的不正确字形覆盖； 
-4. 修改 `Style/ucasthesis.cls` 中目录及章节标题的 `format`，将 `\sffamily` 替换为 `heiti`，以确保在西文非衬线字体被设为 TeX Gyre Hero 后，各级标题仍以西文衬线+中文黑体排版；
+4. 修改 `Style/ucasthesis.cls` 中目录及章节标题的 `format`，将 `\sffamily` 替换为 `\heiti`，以确保在西文非衬线字体被设为 TeX Gyre Hero 后，各级标题仍以西文衬线+中文黑体排版；
 
 ## 2020-02-10
 

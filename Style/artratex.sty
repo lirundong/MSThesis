@@ -49,6 +49,8 @@
     \artx@luatextrue
 \else%
     \artx@pdftextrue
+    \errmessage{ERROR: XeTeX or LuaTeX is required to typeset this document}
+    \csname @@end\expandafter\endcsname
 \fi\fi%
 %-
 %-> Bibliography engine <bibtex>, <biber>
@@ -276,124 +278,112 @@
 %-
 %-> Language settings
 %-
-\ifartx@pdftex% <pdflatex> call font packages
-    \RequirePackage[utf8]{inputenc}% set input encoding, document must use utf-8 encoding
-    \RequirePackage[T1]{fontenc}% set font encoding to enable modern font encoding
-    %- Text font: English <default: computer modern|others: font packages>
-    \RequirePackage{newtxtext}% main font, <times font: newtxtext|others: palatino>
-    %- Math font: <default: computer modern|others: font packages>
-    \RequirePackage[cmintegrals]{newtxmath}% times font, load after amsmath and newtxtext packages
-    \RequirePackage{mathrsfs}% enable \mathscr for script alphabet
-    \RequirePackage[cal=cm]{mathalfa}% map styles for calligraphic \mathcal and script \mathscr alphabet
-\else% <xelatex> or <lualatex> call system fonts
-    \RequirePackage{fontspec}% support calling system fonts
-    \@ifpackagelater{fontspec}{2016/12/27}{}{%
-        \PackageError{artratex}{%
-            This package requires fontspec\MessageBreak 2016/12/27 or later version}{}
-    }
-    %- Font properties: <family> + <weight> + <shape> + <size>
-    %- Specify the three default TeX font families: <main>, <sans>, <mono>
-    %- \setxxxxfont{<font>}[BoldFont=<font-b>,ItalicFont=<font-i>,BoldItalicFont=<font-bi>]%
-    %- <font>: \mdseries\upshape; <font-b>: \bfseries\upshape; <font-i>: \mdseries\itshape
-    %- <\lfseries|\mdseries|\bfseries>: weight of font, default <\mdseries>
-    %- <\upshape|\itshape|\scshape>: shape of font, default <\upshape>
-    %- Roman or Serif - typefaces with strokes - for main content
-    %- examples: Times New Roman, Garamond, Adobe Garamond Pro
-    %\setmainfont{Garamond}[BoldFont=Garamond-Bold,ItalicFont=Garamond-Italic]%
-    %- font switches: {\rmfamily ...}, \textrm{...}, {\normalfont ...}, \textnormal{...}
-    %- the latter is due to \renewcommand*{\familydefault}{\rmdefault}
-    %- Sans serif - typefaces without strokes - for headings demanding high readability
-    %- examples: Arial, Helvetica, Gill Sans, Futura
-    %\setsansfont{Gill Sans MT}% font switches: {\sffamily ...}, \textsf{...}
-    %- Monospaced - typefaces with same width - for programming, etc
-    %- examples: Rockwell, Andale Mono, Courier
-    %\setmonofont{Rockwell}% font switches: {\ttfamily, ...}, \texttt{...}
-    %- Specify user-defined font families and font switches
-    %- without NFSSFamily option, a font family is defined only if adding a new font name
-    %\newfontfamily\<font-switch>{<font>}[<font features>]%
-    %\newcommand{\text<font-switch>}[1]{{\<font-switch> #1}}%
-    %- Text font: English <default: computer modern|fontspec: system fonts|others: font packages>
-    %\RequirePackage{newtxtext}% main font
-    %- Math font: <default: computer modern|others: font packages <newtxmath|unicode-math>>
-    %\RequirePackage[cmintegrals]{newtxmath}% times font, load after amsmath and newtxtext packages
-    %\RequirePackage{mathrsfs}% enable \mathscr for script alphabet
-    %\RequirePackage[cal=cm]{mathalfa}% map styles for calligraphic \mathcal and script \mathscr alphabet
-    \RequirePackage{unicode-math}% unicode font configuration <XITS|STIX2>
-    \def\boldsymbol#1{\symbfit{#1}}% treat obsoleteness
-    \providecommand{\Vector}[1]{\symbfit{#1}}% general vectors in bold italic
-    \providecommand{\unitVector}[1]{\symbfup{#1}}% unit vectors in bold roman
-    \providecommand{\Matrix}[1]{\symbfup{#1}}% matrix in bold roman
-    \providecommand{\unitMatrix}[1]{\symbfup{#1}}% identity matrix in bold roman
-    \providecommand{\Tensor}[1]{\symbfsfup{#1}}% tensor in sans-serif bold italic
-    \providecommand{\unitTensor}[1]{\symbfsfup{#1}}% identity tensor in sans-serif bold
-    \setmainfont{XITS} [
-      Extension      = .otf,
-      UprightFont    = *-Regular,
-      BoldFont       = *-Bold,
-      ItalicFont     = *-Italic,
-      BoldItalicFont = *-BoldItalic,
-      Ligatures      = TeX,
+\RequirePackage{fontspec}% support calling system fonts
+\@ifpackagelater{fontspec}{2016/12/27}{}{%
+    \PackageError{artratex}{%
+        This package requires fontspec\MessageBreak 2016/12/27 or later version}{}
+}
+%- Font properties: <family> + <weight> + <shape> + <size>
+%- Specify the three default TeX font families: <main>, <sans>, <mono>
+%- \setxxxxfont{<font>}[BoldFont=<font-b>,ItalicFont=<font-i>,BoldItalicFont=<font-bi>]%
+%- <font>: \mdseries\upshape; <font-b>: \bfseries\upshape; <font-i>: \mdseries\itshape
+%- <\lfseries|\mdseries|\bfseries>: weight of font, default <\mdseries>
+%- <\upshape|\itshape|\scshape>: shape of font, default <\upshape>
+%- Roman or Serif - typefaces with strokes - for main content
+%- examples: Times New Roman, Garamond, Adobe Garamond Pro
+%\setmainfont{Garamond}[BoldFont=Garamond-Bold,ItalicFont=Garamond-Italic]%
+%- font switches: {\rmfamily ...}, \textrm{...}, {\normalfont ...}, \textnormal{...}
+%- the latter is due to \renewcommand*{\familydefault}{\rmdefault}
+%- Sans serif - typefaces without strokes - for headings demanding high readability
+%- examples: Arial, Helvetica, Gill Sans, Futura
+%\setsansfont{Gill Sans MT}% font switches: {\sffamily ...}, \textsf{...}
+%- Monospaced - typefaces with same width - for programming, etc
+%- examples: Rockwell, Andale Mono, Courier
+%\setmonofont{Rockwell}% font switches: {\ttfamily, ...}, \texttt{...}
+%- Specify user-defined font families and font switches
+%- without NFSSFamily option, a font family is defined only if adding a new font name
+%\newfontfamily\<font-switch>{<font>}[<font features>]%
+%\newcommand{\text<font-switch>}[1]{{\<font-switch> #1}}%
+%- Text font: English <default: computer modern|fontspec: system fonts|others: font packages>
+%\RequirePackage{newtxtext}% main font
+%- Math font: <default: computer modern|others: font packages <newtxmath|unicode-math>>
+%\RequirePackage[cmintegrals]{newtxmath}% times font, load after amsmath and newtxtext packages
+%\RequirePackage{mathrsfs}% enable \mathscr for script alphabet
+%\RequirePackage[cal=cm]{mathalfa}% map styles for calligraphic \mathcal and script \mathscr alphabet
+\RequirePackage[
+  mathrm = sym,
+  mathit = sym,
+  mathbf = sym,
+  mathtt = sym,
+] {unicode-math}% unicode font configuration <XITS|STIX2>
+\setmainfont{XITS} [
+  Extension      = .otf,
+  UprightFont    = *-Regular,
+  BoldFont       = *-Bold,
+  ItalicFont     = *-Italic,
+  BoldItalicFont = *-BoldItalic,
+  Ligatures      = TeX,
+]
+\setsansfont{texgyreheros} [
+  Extension      = .otf,
+  UprightFont    = *-regular,
+  BoldFont       = *-bold,
+  ItalicFont     = *-italic,
+  BoldItalicFont = *-bolditalic,
+  Ligatures      = TeX,
+]
+\setmonofont{texgyrecursor} [
+  Extension      = .otf,
+  UprightFont    = *-regular,
+  BoldFont       = *-bold,
+  ItalicFont     = *-italic,
+  BoldItalicFont = *-bolditalic,
+  Ligatures      = TeX,
+]
+%- Math font: XITSMath and FiraMath
+\setmathfont{XITSMath-Regular} [
+  Extension    = .otf,
+  BoldFont     = XITSMath-Bold,
+  StylisticSet = 1,
+]
+\setmathfont{XITSMath-Regular} [
+  Extension    = .otf,
+  BoldFont     = XITSMath-Bold,
+  range        = {cal,bfcal},
+  StylisticSet = 1,
+]
+\setmathfont{XITSMath-Regular} [
+  Extension    = .otf,
+  BoldFont     = XITSMath-Bold,
+  range        = {scr,bfscr},
+  StylisticSet = 2,
+]
+\setmathfontface\mathsf{FiraMath-Regular.otf}
+%- Text font: Chinese
+\ifartx@windows%
+    \setCJKmainfont{SimSun}[
+        AutoFakeBold   = 2.5,
+        ItalicFont     = KaiTi,
+    ]%
+    \setCJKsansfont{SimHei}[AutoFakeBold=2.5]%
+    \setCJKmonofont{FangSong}[AutoFakeBold=2.5]%
+\else\ifartx@mac%
+    \setCJKmainfont{Songti SC}[%
+        UprightFont    = * Light,
+        BoldFont       = * Bold,
+        ItalicFont     = Kaiti SC,
+        BoldItalicFont = Kaiti SC Bold,
     ]
-    \setsansfont{texgyreheros} [
-      Extension      = .otf,
-      UprightFont    = *-regular,
-      BoldFont       = *-bold,
-      ItalicFont     = *-italic,
-      BoldItalicFont = *-bolditalic,
-      Ligatures      = TeX,
-    ]
-    \setmonofont{texgyrecursor} [
-      Extension      = .otf,
-      UprightFont    = *-regular,
-      BoldFont       = *-bold,
-      ItalicFont     = *-italic,
-      BoldItalicFont = *-bolditalic,
-      Ligatures      = TeX,
-    ]
-    \setmathfont{XITSMath-Regular} [
-      Extension    = .otf,
-      BoldFont     = XITSMath-Bold,
-      Ligatures    = TeX,
-      StylisticSet = 1,
-    ]
-    \setmathfont{XITSMath-Regular} [
-      Extension    = .otf,
-      range        = {cal,bfcal},
-      Ligatures    = TeX,
-      StylisticSet = 1,
-    ]
-    \setmathfont{XITSMath-Regular} [
-      Extension    = .otf,
-      range        = {scr,bfscr},
-      Ligatures    = TeX,
-      StylisticSet = 2,
-    ]
-    %- Text font: Chinese
-    \ifartx@windows%
-        \setCJKmainfont{SimSun}[
-            AutoFakeBold   = 2.5,
-            ItalicFont     = KaiTi,
-        ]%
-        \setCJKsansfont{SimHei}[AutoFakeBold=2.5]%
-        \setCJKmonofont{FangSong}[AutoFakeBold=2.5]%
-    \else\ifartx@mac%
-        \setCJKmainfont{Songti SC}[%
-            UprightFont    = * Light,
-            BoldFont       = * Bold,
-            ItalicFont     = Kaiti SC,
-            BoldItalicFont = Kaiti SC Bold,
-        ]
-        \setCJKsansfont{Heiti SC}[BoldFont = * Medium]%
-        \setCJKmonofont{STFangsong}%
-    \else\ifartx@adobe%
-        \setCJKmainfont{AdobeSongStd-Light}[
-            AutoFakeBold = 2.5,
-            ItalicFont   = AdobeKaitiStd-Regular
-        ]%
-        \setCJKsansfont{AdobeHeitiStd-Regular}[AutoFakeBold=2.5]%
-        \setCJKmonofont{AdobeFangsongStd-Regular}%
-    \fi\fi\fi
-\fi
+    \setCJKsansfont{Heiti SC}[BoldFont = * Medium]%
+    \setCJKmonofont{STFangsong}%
+\else\ifartx@adobe%
+    \setCJKmainfont{AdobeSongStd-Light}[
+        AutoFakeBold = 2.5,
+        ItalicFont   = AdobeKaitiStd-Regular
+    ]%
+    \setCJKsansfont{AdobeHeitiStd-Regular}[AutoFakeBold=2.5]%
+    \setCJKmonofont{AdobeFangsongStd-Regular}%
+\fi\fi\fi
 
 %-
 %-> Bibliography processor and package
