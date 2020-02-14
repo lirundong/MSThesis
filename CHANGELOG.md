@@ -2,6 +2,10 @@
 
 `sht-thesis` 项目派生于 `ucasthesis`，一个在 GPLv3 License 下分发的项目。根据该许可证条款，`sht-thesis` 项目列出基于 `ucasthesis` (commit `faad94b` 之后) 的所有修改条目：
 
+## 2020-02-14
+
+1. 在 Style/ucasthesis.cls 中设置 `\paragraph{}` 行首缩进 2 中文字符；
+
 ## 2020-02-13
 
 > Release: v0.1.0
