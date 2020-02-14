@@ -295,7 +295,7 @@
 
         \vspace*{\stretch{3}}
 
-        {\zihao{-3}\bfseries\sffamily \ulenhance[1.5pt]{\ucas@value@ch@title}}
+        {\zihao{-3}\bfseries\heiti \ulenhance[1.5pt]{\ucas@value@ch@title}}
 
         \vspace*{\stretch{3}}
 
