@@ -127,7 +127,11 @@
 %---------------------------------------------------------------------------%
 % Machine learning ralated stuff
 %---------------------------------------------------------------------------%
+\RequirePackage{slashed}
+\RequirePackage{esdiff}
 \providecommand{\CE}[2]{\mathrm{CE}\left( #1 \| #2 \right)}
 \providecommand{\KL}[2]{D_{\mathrm{KL}}\left( #1 \| #2 \right)}
+\providecommand{\Round}[1]{\left\lfloor #1 \right\rceil}
+\providecommand{\NoDiff}[1]{\slashed{\nabla} #1}
 
 \endinput
