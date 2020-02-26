@@ -6,45 +6,43 @@
     \sys_if_engine_uptex:TF
       { \ctex_fontset_error:n { source } }
       {
-        \setCJKmainfont
-          [
-            Path = Fonts/ ,
-            BoldFont = SourceHanSerifSC-Bold.otf ,
-            ItalicFont = STKaitiSC-Regular.TTF ,
-            BoldItalicFont = STKaitiSC-Bold.TTF ,
-          ] { SourceHanSerifSC-Regular.otf }
-        \setCJKsansfont 
-          [
-            Path = Fonts/ ,
-            BoldFont = SourceHanSansSC-Bold.otf
-          ] { SourceHanSansSC-Regular.otf }
-        \setCJKmonofont
-          [
-            Path = Fonts/ ,
-            BoldFont = HYD4GJ.TTF ,
-          ] { FZFSK.TTF }
-        \setCJKfamilyfont { zhsong }
-          [
-            Path = Fonts/ ,
-            BoldFont = SourceHanSerifSC-Bold.otf ,
-            ItalicFont = STKaitiSC-Regular.TTF ,
-            BoldItalicFont = STKaitiSC-Bold.TTF ,
-          ] { SourceHanSerifSC-Regular.otf }
-        \setCJKfamilyfont { zhhei }
-          [
-            Path = Fonts/ ,
-            BoldFont = SourceHanSansSC-Bold.otf
-          ] { SourceHanSansSC-Regular.otf }
-        \setCJKfamilyfont { zhfs }
-          [
-            Path = Fonts/ ,
-            BoldFont = HYD4GJ.TTF ,
-          ] { FZFSK.TTF }
-        \setCJKfamilyfont { zhkai }
-          [
-            Path = Fonts/ ,
-            BoldFont = STKaitiSC-Bold.TTF ,
-          ]  { STKaitiSC-Regular.TTF }
+        \setCJKfamilyfont { zhsong } [
+            Path = Fonts/,
+            Extension = .otf,
+            BoldFont = SourceHanSerifSC-Bold,
+            ItalicFont = FandolKai-Regular,
+        ] { SourceHanSerifSC-Regular }
+        \setCJKfamilyfont { zhhei } [
+            Path = Fonts/,
+            Extension = .otf,
+            BoldFont = SourceHanSansSC-Bold
+        ] { SourceHanSansSC-Regular }
+        \setCJKfamilyfont { zhfs } [
+            AutoFakeBold,
+            Path = Fonts/,
+            Extension = .otf,
+        ] { FandolFang-Regular }
+        \setCJKfamilyfont { zhkai } [
+            AutoFakeBold,
+            Path = Fonts/,
+            Extension = .otf,
+        ] { FandolKai-Regular }
+        \setCJKmainfont [
+            Path = Fonts/,
+            Extension = .otf,
+            BoldFont = SourceHanSerifSC-Bold,
+            ItalicFont = FandolKai-Regular,
+        ] { SourceHanSerifSC-Regular }
+        \setCJKsansfont [
+            Path = Fonts/,
+            Extension = .otf,
+            BoldFont = SourceHanSansSC-Bold
+        ] { SourceHanSansSC-Regular }
+        \setCJKmonofont [
+            AutoFakeBold,
+            Path = Fonts/,
+            Extension = .otf,
+        ] { FandolFang-Regular }
       }
   }
 \NewDocumentCommand \songti   { } { \CJKfamily { zhsong } }

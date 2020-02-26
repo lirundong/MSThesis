@@ -2,6 +2,13 @@
 
 `sht-thesis` 项目派生于 `ucasthesis`，一个在 GPLv3 License 下分发的项目。根据该许可证条款，`sht-thesis` 项目列出基于 `ucasthesis` (commit `faad94b` 之后) 的所有修改条目：
 
+## 2020-02-26
+
+> Release: v0.1.1
+
+1. 将 ctex-fontset-noto.def 中楷书和仿宋字体修改为 Fandol 系列，以避免可能的侵权问题；
+2. 将封面标题 `\bfesries` 修改为 `\heiti`，以确保英文以衬线字体排版；
+
 ## 2020-02-14
 
 1. 在 Style/ucasthesis.cls 中设置 `\paragraph{}` 行首缩进 2 中文字符；

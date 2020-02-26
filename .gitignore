@@ -27,3 +27,5 @@ Thesis.pdf
 # ignore font files
 *.TTF
 *.otf
+Fonts/COPYING-Fandol.txt
+Fonts/LICENSE-Source.txt
