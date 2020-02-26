@@ -91,8 +91,8 @@ GQ-Nets 在预训练阶段构造模型量化误差~\eqref{eq::gq_nets::total_los
 
 \begin{figure}[htb]
   \centering
-  \missingfigure[figwidth=0.9\columnwidth]{\normalsize 脱离梯度前后，最后一层参数收到的梯度间的余弦夹角}
-  \caption{TODO: 脱离梯度前后，最后一层参数收到的梯度间的余弦夹角}
+  \includegraphics[width=\columnwidth]{GQ_Nets/kl_to_ce_angle.pdf}
+  \caption{脱离梯度 $\nabla_{\sigma(x_L)}\mathcal{L}_q$ 前后，最后一层权重参数 $W_L$ 收到的梯度间的余弦夹角（左图），及训练过程中 $\FpNet$ 测试准确度（右图）。}
   \label{img::gq_nets::detach_grad_cos}
 \end{figure}
 
@@ -169,7 +169,7 @@ GQ-Nets 在预训练阶段构造模型量化误差~\eqref{eq::gq_nets::total_los
 % ------------------------------------------------------------------------------
 %    Experimental settings
 % ------------------------------------------------------------------------------
-\subsection{实验详细设置}
+\subsection{实验详细设置} \label{sec::gq_nets::general_conf}
 \paragraph{数据集}
 本节中讨论的物体分类任务使用了 CIFAR-10 和 ILSVRC 2012 数据集。CIFAR-10~\citep{krizhevsky2009learning} 包含来自 10 个不同类别的、分辨率为 $32 \times 32$ 的图片，其中训练集包含 50K 个样本，测试集包含 10K 个样本，实验结果报告为模型在测试集上的 Top-1 分类准确度。ILSVRC 2012~\citep{ILSVRC15} 是 ImageNet~\citep{deng2009imagenet} 数据集的子集，包含了来自 1K 个类别的图片，其中训练集包含 1.2M 个样本，验证集和测试集分别包含 50K 和 100K 个样本，实验结果报告为模型在验证集上的 Top-1 及 Top-5 准确度。
 
@@ -208,10 +208,40 @@ GQ-Nets 在预训练阶段构造模型量化误差~\eqref{eq::gq_nets::total_los
 
 \paragraph{量化函数}
 除非特别说明，本章中所有实验都使用如下量化函数设置：模型权重及激活量化函数均为逐层线性量化，即在量化函数 $Q$ 的定义~\eqref{eq::gq_nets::linear_q_func} 中，模型各层权重及激活张量中所有元素共用当前层的量化宽度 $\Delta$ 和截断边界 $\{lb, ub\}$。模型量化参数 $\Theta$ 中，截断边界 $\{lb, ub\}$ 为可学习参数，在训练过程中随梯度更新。对于权重量化函数 $Q^w_i$，其截断边界分别被初始化为当层权重 $W_i$ 的最小值和最大值；对于激活量化函数 $Q^a_i$，在第一次计算量化误差前，随机从训练集中构造一用于校准的小批量输入（实验中批量尺寸为 $64$），使用该组输入得出模型每层激活值的上下 $99.9\%$ 分位数，并将各层激活量化函数的截断上下边界分别初始化为该校准值。
+% ------------------------------------------------------------------------------
+%    CIFAR
+% ------------------------------------------------------------------------------
+\subsection{CIFAR-10 物体分类实验}
+所有 CIFAR-10 上的模型使用相同的训练配置。训练在一块 NVIDIA RTX-2080 Ti GPU 上进行，训练批量大小为 128，训练持续 200 轮。模型权重参数 $\mathcal{W}$ 和量化参数 $\Theta$ 使用不同的初始化和训练策略。模型权重参数 $\mathcal{W}$ 以 Kaiming-normal~\citep{He_2015} 方式初始化，随后使用带 Nesterov 动量的 SGD 算法进行优化。其动量设置为 $0.9$，L2 权重衰减设置为 $10^{-4}$，学习率初始化为 $0.1$，并在训练过程第 80 和第 120 轮分别衰减 $0.1\times$。量化参数 $\Theta$ 按照~\ref{sec::gq_nets::general_conf} 节设定初始化，随后使用 Adam~\citep{kingma2014adam} 算法进行优化。优化过程不使用权重衰减，学习率全程设为 $4\times 10^{-4}$，Adam 算法中第一动量和第二动量分别设为 $\beta_1 = 0.9$ 和 $\beta_2 = 0.999$。训练样本首先边界补零，并随机裁剪至 $32\times 32$ 像素，之后再随机水平翻转并分别在 RGB 通道做归一化；测试样本则只对 RGB 通道分别做归一化。
+
+实验所用模型在 CIFAR-10 测试集上 Top-1 准确率见表~\ref{tab::gq_nets::cifar}。
+
+\begin{table}[htb]
+  \centering
+  \caption{使用 ResNet-20 主干模型的 GQ-Nets 在 CIFAR-10 物体分类任务上的准确率}
+  \label{tab::gq_nets::cifar}
+  \begin{tabular}{l *{4}{c}}
+    \toprule
+    \multirow{2}{*}{主干模型} & \multicolumn{2}{c}{量化位宽} &\multicolumn{2}{c}{Top-1 准确率} \\
+    & 权重（W） & 激活（A） & 全精度（FP） & 量化（Q） \\
+    \midrule
+    \multirow{5}{*}{ResNet-20} & 32 & 32 & 91.81 & -- \\
+    & 8 & 8 & TODO & TODO \\
+    & 4 & 4 & TODO & TODO \\
+    & 3 & 3 & TODO & TODO \\
+    & 2 & 2 & 91.66 & 84.97 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+% ------------------------------------------------------------------------------
+%    ILSVRC
+% ------------------------------------------------------------------------------
+\subsection{ILSVRC 2012 物体分类实验}
+TODO
 % ==============================================================================
 %  Ablation study
 % ==============================================================================
-\section{对比实验及分析}
+\section{模型简化测试及分析}
 TODO
 
 % ==============================================================================
