@@ -134,5 +134,14 @@
 \providecommand{\NoDiff}[1]{\slashed{\nabla} #1}
 \providecommand{\FpNet}{f_{\mathcal{W}}}
 \providecommand{\QuantNet}{\hat{f}_{\mathcal{W, Q}}}
+\providecommand{\NormalDist}[1]{\mathcal{N} \left( #1 \right)}
+
+%---------------------------------------------------------------------------%
+% Drawing and table helpers
+%---------------------------------------------------------------------------%
+\def\boxit#1{%
+  \smash{\color{red}\fboxrule=1pt\relax\fboxsep=2pt\relax%
+  \llap{\rlap{\fbox{\vphantom{0}\makebox[#1]{}}}~}}\ignorespaces
+}
 
 \endinput

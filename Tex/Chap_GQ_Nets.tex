@@ -176,7 +176,8 @@ GQ-Nets 在预训练阶段构造模型量化误差~\eqref{eq::gq_nets::total_los
 本节中讨论的物体检测任务使用了 MS COCO 数据集及 COCO-2017 Detection Challenge 的标注信息，下文统称 MS COCO。MS COCO~\citep{lin2014microsoft} 数据集包含 115K 训练集样本及 5K 验证集样本，每一样本上标注了来自 80 类物体的检测框（bounding box）。实验结果主要报告为在验证集检测框检测子任务上，模型输出检测框与标注框交并比（intersection over union，下文统称 IoU）阈值为 $[0.5, 0.55, \ldots 0.95]$ 的多类别平均准确度（mean average precision，下文统一记为 $\mathrm{mAP}^{0.5:0.95}$）。
 \unsure{把 COCO 上的实验单独列一节，把这一段移过去？}
 
-\paragraph{主干模型} 本节中使用 ResNet-\{18, 20, 50\}~\citep{He_2016} 和 MobileNet-\{v1, v2\}~\citep{howard2017mobilenets, Sandler_2018} 作为实验的主干模型（backbone network）。在 CIFAR-10 分类任务上，使用了 ResNet-20 模型。注意本章所用的 ResNet-20 与~\citet{zhou2016dorefanet, choi2018pact, jung2019learning, li2019additive} 一致，其结构如表~\ref{tab::gq_nets::res20} 所示。
+\paragraph{主干模型}
+本节中使用 ResNet-\{18, 20, 50\}~\citep{He_2016} 和 MobileNet-\{v1, v2\}~\citep{howard2017mobilenets, Sandler_2018} 作为实验的主干模型（backbone network）。在 CIFAR-10 分类任务上，使用了 ResNet-20 模型。注意本章所用的 ResNet-20 与~\citet{zhou2016dorefanet, choi2018pact, li2019additive} 一致，其结构如表~\ref{tab::gq_nets::res20} 所示。
 
 \begin{table}[htb]
   \centering
@@ -207,43 +208,149 @@ GQ-Nets 在预训练阶段构造模型量化误差~\eqref{eq::gq_nets::total_los
 \end{figure}
 
 \paragraph{量化函数}
-除非特别说明，本章中所有实验都使用如下量化函数设置：模型权重及激活量化函数均为逐层线性量化，即在量化函数 $Q$ 的定义~\eqref{eq::gq_nets::linear_q_func} 中，模型各层权重及激活张量中所有元素共用当前层的量化宽度 $\Delta$ 和截断边界 $\{lb, ub\}$。模型量化参数 $\Theta$ 中，截断边界 $\{lb, ub\}$ 为可学习参数，在训练过程中随梯度更新。对于权重量化函数 $Q^w_i$，其截断边界分别被初始化为当层权重 $W_i$ 的最小值和最大值；对于激活量化函数 $Q^a_i$，在第一次计算量化误差前，随机从训练集中构造一用于校准的小批量输入（实验中批量尺寸为 $64$），使用该组输入得出模型每层激活值的上下 $99.9\%$ 分位数，并将各层激活量化函数的截断上下边界分别初始化为该校准值。
+除非特别说明，本章中所有实验都使用如下量化函数设置：模型权重及激活量化函数均为逐层非对称线性量化，即在量化函数 $Q$ 的定义~\eqref{eq::gq_nets::linear_q_func} 中，模型各层权重及激活张量中所有元素共用当前层的量化宽度 $\Delta$ 和截断边界 $\{lb, ub\}$。模型量化参数 $\Theta$ 中，截断边界 $\{lb, ub\}$ 为可学习参数，在训练过程中随梯度更新。对于权重量化函数 $Q^w_i$，其截断边界分别被初始化为当层权重 $W_i$ 的最小值和最大值；对于激活量化函数 $Q^a_i$，在第一次计算量化误差前，随机从训练集中构造一用于校准的小批量输入（实验中批量尺寸为 $64$），使用该组输入得出模型每层激活值的上下 $99.9\%$ 分位数，并将各层激活量化函数的截断上下边界分别初始化为该校准值。
 % ------------------------------------------------------------------------------
 %    CIFAR
 % ------------------------------------------------------------------------------
-\subsection{CIFAR-10 物体分类实验}
-所有 CIFAR-10 上的模型使用相同的训练配置。训练在一块 NVIDIA RTX-2080 Ti GPU 上进行，训练批量大小为 128，训练持续 200 轮。模型权重参数 $\mathcal{W}$ 和量化参数 $\Theta$ 使用不同的初始化和训练策略。模型权重参数 $\mathcal{W}$ 以 Kaiming-normal~\citep{He_2015} 方式初始化，随后使用带 Nesterov 动量的 SGD 算法进行优化。其动量设置为 $0.9$，L2 权重衰减设置为 $10^{-4}$，学习率初始化为 $0.1$，并在训练过程第 80 和第 120 轮分别衰减 $0.1\times$。量化参数 $\Theta$ 按照~\ref{sec::gq_nets::general_conf} 节设定初始化，随后使用 Adam~\citep{kingma2014adam} 算法进行优化。优化过程不使用权重衰减，学习率全程设为 $4\times 10^{-4}$，Adam 算法中第一动量和第二动量分别设为 $\beta_1 = 0.9$ 和 $\beta_2 = 0.999$。训练样本首先边界补零，并随机裁剪至 $32\times 32$ 像素，之后再随机水平翻转并分别在 RGB 通道做归一化；测试样本则只对 RGB 通道分别做归一化。
-
-实验所用模型在 CIFAR-10 测试集上 Top-1 准确率见表~\ref{tab::gq_nets::cifar}。
+\subsection{CIFAR-10 物体分类实验} \label{sec::gq_nets::cifar10_experiments}
+所有 CIFAR-10 上的模型使用相同的训练配置。训练在一块 NVIDIA RTX 2080 Ti GPU 上进行，训练批量大小为 128，训练持续 200 轮。模型权重参数 $\mathcal{W}$ 和量化参数 $\Theta$ 使用不同的初始化和训练策略。模型权重参数 $\mathcal{W}$ 以 $\NormalDist{0, \sqrt{\frac{2}{n_{\mathrm{out}}}}}$ 方式初始化，其中 $n_{\mathrm{out}}$ 表示当前参数张量的\emph{扇出（fan-out）}。\footnote{例如对于维度为 $c_{\mathrm{in}} \times c_{\mathrm{out}} \times k_H \times k_W$ 的 2D 卷积核，其扇出计为 $n_{\mathrm{out}}=c_{\mathrm{out}} \times k_H \times k_W$。} 随后使用带 Nesterov 动量的 SGD 算法进行优化。其动量设置为 $0.9$，L2 权重衰减设置为 $10^{-4}$，学习率初始化为 $0.1$，并在训练过程第 80 和第 120 轮分别衰减 $0.1\times$。量化参数 $\Theta$ 按照~\ref{sec::gq_nets::general_conf} 节设定初始化，随后使用 Adam~\citep{kingma2014adam} 算法进行优化。优化过程不使用权重衰减，学习率全程设为 $4\times 10^{-4}$，Adam 算法中第一动量和第二动量分别设为 $\beta_1 = 0.9$ 和 $\beta_2 = 0.999$。训练样本首先通过边缘对称补零拓展至 $40\times40$ 像素，之后随机裁剪至 $32\times 32$ 像素，最终再随机水平翻转并分别在 RGB 通道做归一化；测试样本则只对 RGB 通道分别做归一化。
 
 \begin{table}[htb]
   \centering
-  \caption{使用 ResNet-20 主干模型的 GQ-Nets 在 CIFAR-10 物体分类任务上的准确率}
+  \caption{完全量化的 ResNet-20 GQ-Nets 在 CIFAR-10 物体分类任务上的准确率}
   \label{tab::gq_nets::cifar}
   \begin{tabular}{l *{4}{c}}
     \toprule
-    \multirow{2}{*}{主干模型} & \multicolumn{2}{c}{量化位宽} &\multicolumn{2}{c}{Top-1 准确率} \\
+    \multirow{2}{*}{主干模型} & \multicolumn{2}{c}{数值精度} &\multicolumn{2}{c}{Top-1 准确率} \\
     & 权重（W） & 激活（A） & 全精度（FP） & 量化（Q） \\
     \midrule
     \multirow{5}{*}{ResNet-20} & 32 & 32 & 91.81 & -- \\
-    & 8 & 8 & TODO & TODO \\
-    & 4 & 4 & TODO & TODO \\
-    & 3 & 3 & TODO & TODO \\
+    & 5 & 5 & 91.81 & 91.75 \\
+    & 4 & 4 & 91.86 & 91.35 \\
+    & 3 & 3 & 91.93 & 90.04 \\
     & 2 & 2 & 91.66 & 84.97 \\
     \bottomrule
   \end{tabular}
 \end{table}
+
+模型完全量化时（模型第一层 2D 卷积、最后一层全连接以及模型输入），在 CIFAR-10 测试集上 Top-1 准确率见表~\ref{tab::gq_nets::cifar} 。其中，表格中第一行（W32/A32）为只使用全精度损失函数 $\mathcal{L}_f$ 训练得到的全精度基准模型。可以看出，在实验的所有数值精度设置中，模型全精度准确度几乎都不受影响。在模型参数和激活分别被量化至 W5/A5 和 W4/A4 时，GQ-Nets 在训练后能保持接近全精度模型的准确率（Top-1 准确率相较于 W32/A32 分别 $-0.06\%$ 和 $-0.46\%$）。在模型数值精度被进一步压缩至 W2/A2 后，GQ-Nets 准确率出现了明显的下降（相较于 W32/A32 $-6.84\%$）。
+
+\begin{table}[htb]
+  \centering
+  \caption{不完全量化的 ResNet-20 GQ-Nets 在 CIFAR-10 物体分类任务上的准确率}
+  \label{tab::gq_nets::cifar_fpfl}
+  \begin{tabular}{l *{4}{c}}
+    \toprule
+    \multirow{2}{*}{主干模型} & \multicolumn{2}{c}{数值精度} &\multicolumn{2}{c}{Top-1 准确率} \\
+    & 权重（W） & 激活（A） & 全精度（FP） & 量化（Q） \\
+    \midrule
+    \multirow{5}{*}{ResNet-20} & 32 & 32 & 91.81 & -- \\
+    & 5 & 5 & 90.75 & 91.04 \\
+    & 4 & 4 & 91.13 & 90.90 \\
+    & 3 & 3 & 91.16 & 90.37 \\
+    & 2 & 2 & 91.19 & 88.15 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+GQ-Nets 也可以按照模型不完全量化的方式进行量化训练，即模型输入、第一层 2D 卷积和最后一层全连接在训练和推理时保持全精度。该设置与~\citet{zhou2016dorefanet, choi2018pact, Zhang_2018, li2019additive} 一致，该设置下 GQ-Nets 在 CIFAR-10 测试集上的准确率见表~\ref{tab::gq_nets::cifar_fpfl} 。相较于表~\ref{tab::gq_nets::cifar} 中列出的完全量化模型，不完全量化的 GQ-Nets 在低数值精度时准确度改善明显。例如在 W2/A2 设置上，不完全量化模型准确率相较完全量化提升了 $3.18\%$，仅比 W32/A32 模型准确率降低 $3.66\%$。然而，在数值精度相对较高的 W5/A5 和 W4/A4 设置中，不完全量化反而会使模型准确度降低。例如在 W5/A5 设置上，不完全量化的准确度相较完全量化降低了 $0.71\%$。另外值得注意的是，在 W5/A5 $\sim$ W2/A2 的所有量化设置中，不完全量化模型在全精度推理时的准确率均低于完全量化模型。这可能表示，在 GQ-Nets 的训练中，量化误差项 $\mathcal{L}_q$ 的加入可以视为模型训练过程的额外正则化，而完全量化训练的正则化效果更为明显。在 CIFAR-10 这类相对容易的任务中，较强的训练正则化可得到测试准确度更高的模型。
+
+\ctable[
+  caption = 不同量化方法的 ResNet-20 在 CIFAR-10 物体分类任务上的准确率,
+  pos = htb,
+  label = tab::gq_nets::cifar_compare,
+]{l *{5}{c}}{
+  \tnote[a]{\citet{zhou2016dorefanet} 没有报告 CIFAR-10 实验结果，数据取自~\citet{choi2018pact} 的复现报告；}
+  \tnote[b]{不完全量化，模型输入、第一层和最后一层保留为浮点；}
+  \tnote[c]{不完全量化，模型输入、第一层和最后一层数值精度为 W8/A8；}
+  \tnote[d]{GQ-Nets 数据第一行表示模型完全量化下的准确率，第二行表示模型不完全量化（即模型输入、第一层和最后一层保留为浮点）下的准确率。}
+}{
+  \FL
+  \multirow{2}{*}{量化方法} & \multicolumn{5}{c}{Top-1 准确率} \NN
+  & FP & W5/A5 & W4/A4 & W3/A3 & W2/A2
+  \ML
+  DoReFa~\citep{zhou2016dorefanet}~\tmark[a]\tmark[b] & 91.6 & 90.4 & 90.5 & 89.9 & 88.2 \NN
+  PACT~\citep{choi2018pact}~\tmark[b]        & 91.6 & 91.7 & 91.3 & 91.1 & 89.7 \NN
+  LQ-Net~\citep{Zhang_2018}~\tmark[b]        & 92.1 & -- & -- & 91.6 & 90.2 \NN
+  APoT~\citep{li2019additive}~\tmark[c]      & 92.96 & -- & 92.45 & 92.49 & 90.96 \NN
+  \hdashline
+  \multirow{2}{*}{GQ-Nets~\tmark[d]} & \multirow{2}{*}{91.81} & 91.75 & 91.35 & 90.04 & 84.97 \NN
+                                                  & & 91.04 & 90.90 & 90.37 & 88.15
+  \LL
+}
+
+表~\ref{tab::gq_nets::cifar_compare} 列出了 GQ-Nets 与其他量化训练方法在 CIFAR-10 数据集上的性能对比，这些数据同时包含了模型被完全量化，及模型不完全量化时的准确率。\improvement{列出 pretrained GQ-Nets 性能，以及更仔细的分析}
 % ------------------------------------------------------------------------------
 %    ILSVRC
 % ------------------------------------------------------------------------------
 \subsection{ILSVRC 2012 物体分类实验}
-TODO
-% ==============================================================================
-%  Ablation study
-% ==============================================================================
-\section{模型简化测试及分析}
-TODO
+由于数据量显著增大，GQ-Nets 在 ILSVRC 2012 数据集上的实验在 32 块 NVIDIA GTX 1080 Ti GPU 上使用数据并行模式进行。每一节点的训练批量大小为 64，每一步反向传播完成后，各节点间使用 all-reduce 同步梯度并更新模型参数，训练持续 120 轮。模型权重参数 $\mathcal{W}$ 以 Kaiming-normal~\citep{He_2015} 方式初始化。由于全局训练批量尺寸增大，优化 $\mathcal{W}$ 的学习率按照~\citet{goyal2017accurate} 提出的 \emph{warmup} 策略，在训练开始的前 4 轮从 0.2 线性增大至 0.8，并分别在训练的第 60 轮和第 90 轮衰减 $\times 0.1$。训练样本首先被随机裁剪至 $224\times 224$ 像素并随机水平翻转，之后在 RGB 通道分别归一化；测试样本先缩放至图片短边 256 像素，之后在缩放后的图片中央裁剪 $224\times 224$ 像素区域，最后在 RGB 通道分别做归一化。其他实验配置与 CIFAR-10 上的实验配置（第~\ref{sec::gq_nets::cifar10_experiments} 节）一致。
 
+\begin{table}[htb]
+  \centering
+  \caption{完全量化的 GQ-Nets 在 ILSVRC 2012 物体分类任务上的准确率}
+  \label{tab::gq_nets::imgnet}
+  \begin{tabular}{l *{5}{c}}
+    \toprule
+    \multirow{2}{*}{主干模型} & 数值精度 &\multicolumn{2}{c}{Top-1 准确率} &\multicolumn{2}{c}{Top-5 准确率} \\
+    & （W/A） & 全精度 & 量化 & 全精度 & 量化 \\
+    \midrule
+    \multirow{5}{*}{ResNet-18} & 32/32 & 69.89 & -- & 89.27 & -- \\
+    & 5/5 & 69.63 & 68.86 & 89.16 & 88.62 \\
+    & 4/4 & 69.12 & 67.32 & 88.89 & 87.73 \\
+    & 3/3 & 68.81 & 64.16 & 88.81 & 85.91 \\
+    & 2/2 & TODO & TODO & TODO & TODO \\
+    \hdashline
+    \multirow{5}{*}{ResNet-34} & 32/32 & 73.30 & -- & 91.42 & -- \\
+    & 5/5 & 69.63 & 68.86 & 89.16 & 88.62 \\
+    & 4/4 & 69.12 & 67.32 & 88.89 & 87.73 \\
+    & 3/3 & 68.81 & 64.16 & 88.81 & 85.91 \\
+    & 2/2 & TODO & TODO & TODO & TODO \\
+    \hdashline
+    \multirow{5}{*}{MobileNet-v1} & 32/32 & 73.30 & -- & 91.42 & -- \\
+    & 5/5 & 69.63 & 68.86 & 89.16 & 88.62 \\
+    & 4/4 & 69.12 & 67.32 & 88.89 & 87.73 \\
+    & 3/3 & 68.81 & 64.16 & 88.81 & 85.91 \\
+    & 2/2 & TODO & TODO & TODO & TODO \\
+    \hdashline
+    \multirow{5}{*}{MobileNet-v2} & 32/32 & 73.30 & -- & 91.42 & -- \\
+    & 5/5 & 69.63 & 68.86 & 89.16 & 88.62 \\
+    & 4/4 & 69.12 & 67.32 & 88.89 & 87.73 \\
+    & 3/3 & 68.81 & 64.16 & 88.81 & 85.91 \\
+    & 2/2 & TODO & TODO & TODO & TODO \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+% ------------------------------------------------------------------------------
+%    COCO
+% ------------------------------------------------------------------------------
+\subsection{MS COCO 物体检测实验}
+TODO
+% ==============================================================================
+%  Analysis and discussions
+% ==============================================================================
+\section{分析实验及讨论}
+TODO
+% ------------------------------------------------------------------------------
+%    Convergence
+% ------------------------------------------------------------------------------
+\subsection{收敛性分析}
+% loss 曲线（CE, KL）
+% running statistics: X, \tilde{X}
+% quantization parameters
+TODO
+% ------------------------------------------------------------------------------
+%    Ablation
+% ------------------------------------------------------------------------------
+\subsection{模型简化分析}
+TODO
+% ------------------------------------------------------------------------------
+%    Training time and extension training
+% ------------------------------------------------------------------------------
+\subsection{其他训练策略}
+% 讨论训练时间 vs. 其他方法
+% 讨论使用更“浪费资源”的训练方式，例如使用预训练权重，渐进初始化等
+TODO
 % ==============================================================================
 %  Conclusion
 % ==============================================================================
