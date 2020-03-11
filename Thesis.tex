@@ -21,7 +21,7 @@
 %---------------------------------------------------------------------------%
 %->> Document settings
 %---------------------------------------------------------------------------%
-\usepackage[authoryear, list, table, color]{Style/artratex}% document settings
+\usepackage[authoryear, list, table, color, tikz]{Style/artratex}% document settings
 %- usage: \usepackage[option1,option2,...,optionN]{artratex}
 %- Multiple optional arguments:
 %- [bibtex|biber]% set bibliography processor and package
@@ -43,6 +43,8 @@
 \usepackage{Style/artracom}% user defined commands
 \usepackage{multirow}
 \usepackage{arydshln}
+% additional setup
+\captionsetup{subrefformat=parens}
 %---------------------------------------------------------------------------%
 %->> Document inclusion
 %---------------------------------------------------------------------------%

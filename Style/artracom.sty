@@ -135,6 +135,13 @@
 \providecommand{\FpNet}{f_{\mathcal{W}}}
 \providecommand{\QuantNet}{\hat{f}_{\mathcal{W, Q}}}
 \providecommand{\NormalDist}[1]{\mathcal{N} \left( #1 \right)}
+\providecommand{\EMA}[1]{{ #1 }_{\mathrm{EMA}}}
+\providecommand{\Batch}[1]{{ #1 }_{\mathrm{b}}}
+\providecommand{\Fold}[1]{{ #1 }_{\mathrm{fold}}}
+\providecommand{\Clamp}[1]{\mathrm{clamp}\left( #1 \right)}
+\DeclareMathOperator{\sign}{sign}
+\providecommand{\mAP}[1]{\mathrm{mAP}^{\mathrm{ #1 }}}
+\providecommand{\mAR}[1]{\mathrm{mAR}^{\mathrm{ #1 }}}
 
 %---------------------------------------------------------------------------%
 % Drawing and table helpers
@@ -143,5 +150,16 @@
   \smash{\color{red}\fboxrule=1pt\relax\fboxsep=2pt\relax%
   \llap{\rlap{\fbox{\vphantom{0}\makebox[#1]{}}}~}}\ignorespaces
 }
+% TF graph node styles, used in main display figure and in appendix 3.
+\tikzstyle{nobox}=[text centered, text=blue!60, font=\sffamily\bfseries]
+\tikzstyle{act}=[thick, rectangle, rounded corners, minimum width=2cm, minimum height=1cm, text centered, draw=black, fill=yellow!20, font=\sffamily\bfseries\boldmath]
+\tikzstyle{add}=[thick, ellipse, minimum width=1cm, minimum height=1cm, text centered, draw=black, fill=yellow!20, font=\sffamily\bfseries\boldmath]
+\tikzstyle{conv}=[thick, rectangle, rounded corners, minimum width=2cm, minimum height=1cm, text centered, draw=black, fill=green!20, font=\sffamily\bfseries]
+\tikzstyle{params}=[thick, ellipse, minimum width=2cm, minimum height=1cm, text centered, draw=black, fill=blue!20, font=\sffamily\bfseries\boldmath]
+\tikzstyle{small_params}=[thick, ellipse, minimum width=1cm, minimum height=1cm, text centered, draw=black, fill=blue!20, font=\sffamily\bfseries\boldmath]
+\tikzstyle{quant}=[thick, ellipse, minimum width=2cm, minimum height=1cm, text centered, draw=black, fill=red!20, font=\sffamily\bfseries]
+\tikzstyle{ma}=[thick, ellipse, minimum width=2cm, minimum height=1cm, text centered, draw=black, fill=gray!20, font=\sffamily\bfseries\boldmath]
+\tikzstyle{arrow} = [thick,->,>=stealth]
+
 
 \endinput

@@ -57,9 +57,9 @@ GQ-Nets 使用在相同输入下，量化神经网络和全精度浮点神经网
   \begin{align}
     \Delta &= \frac{ub - lb}{2^k - 1} \\
     \hat{x} &= Q(x; k, lb, ub) \notag \\
-            &= \Delta \lfloor \frac{\mathrm{clip}(x, lb, ub) - lb}{\Delta} \rceil + lb \label{eq::gq_nets::linear_q_func}
+            &= \Delta \lfloor \frac{\mathrm{clamp}(x, lb, ub) - lb}{\Delta} \rceil + lb \label{eq::gq_nets::linear_q_func}
   \end{align}
-  其中 $\mathrm{clip}(x, lb, ub) = \max(lb, \min(x, ub))$ 为截断操作符，在实际量化前将 $x$ 所有数值范围控制在 $[lb, ub]$ 范围内；$\lfloor\cdot\rceil: \mathbb{R}\to\mathbb{Z}$ 为舍入操作符。注意 $\hat{f}_{\mathcal{W}, \mathcal{Q}}$ 通过权重参数量化函数 $Q^w_{1\ldots L}$，与 $f_{\mathcal{W}}$ 共享一套权重参数 $\mathcal{W}$；
+  其中 $\mathrm{clamp}(x, lb, ub) = \max(lb, \min(x, ub))$ 为截断操作符，在实际量化前将 $x$ 所有数值范围控制在 $[lb, ub]$ 范围内；$\lfloor\cdot\rceil: \mathbb{R}\to\mathbb{Z}$ 为舍入操作符。注意 $\hat{f}_{\mathcal{W}, \mathcal{Q}}$ 通过权重参数量化函数 $Q^w_{1\ldots L}$，与 $f_{\mathcal{W}}$ 共享一套权重参数 $\mathcal{W}$；
   \item GQ-Nets 模型各层在前向传播时，同时计算浮点和量化的中间激活值。具体地，在得到一经过预处理的、以浮点格式存储的小批量输入 $x_0$ 后，第 $i=1$ 层首先计算该层的浮点输出激活 $x_1 = x_0 \star_1 W_1$，其中 $\star_1$ 表示该层的对应操作（例如卷积、逐通道分离卷积或池化等）；之后将该层的输入 $x_0$、权重参数 $W_1$ 使用对应的量化函数及量化参数进行量化 $\hat{x}_0 = Q^a_1(x_0; \theta^a_1), \hat{W}_1 = Q^w_1(W_1; \theta^w_1)$，即可计算得到该层的量化输出激活 $\tilde{x}_1 = \hat{x}_0 \star_1 \hat{W}_1$。对于 $i\in 2\ldots L$ 层，浮点和量化前向计算不再共享输入，即分别使用 $i-1$ 层的浮点输出激活 $x_{i-1}$ 和量化输出激活 $\tilde{x}_{i-1}$ 计算本层的浮点输出 $x_i = x_{i-1} \star_i W_i$ 和量化输出 $\tilde{x}_i = Q^a_i(\tilde{x}_{i-1}; \theta^a_i) \star_i Q^w_i({W}_{i}; \theta^w_i)$ 。注意各层在执行量化前向计算时，由于其输入和权重参数均已被量化，故 $\tilde{x}_i$ 可完全由定点或整数数值逻辑计算得出；
   \item 在得到第 $L$ 层的浮点输出 $x_L$ 和量化输出 $\tilde{x}_L$ 后，分别计算反映模型在目标任务上准确度的原损失函数 $\mathcal{L}_f$ 及反映模型量化输出与浮点输出间相似程度的量化误差度量 $\mathcal{L}_q$，并由此计算模型训练的总体损失函数 $\mathcal{L}$。不失一般性地，本章中使用线性加权计算 $\mathcal{L}$，即
   \begin{align}
@@ -286,46 +286,48 @@ GQ-Nets 也可以按照模型不完全量化的方式进行量化训练，即模
 \subsection{ILSVRC 2012 物体分类实验}
 由于数据量显著增大，GQ-Nets 在 ILSVRC 2012 数据集上的实验在 32 块 NVIDIA GTX 1080 Ti GPU 上使用数据并行模式进行。每一节点的训练批量大小为 64，每一步反向传播完成后，各节点间使用 all-reduce 同步梯度并更新模型参数，训练持续 120 轮。模型权重参数 $\mathcal{W}$ 以 Kaiming-normal~\citep{He_2015} 方式初始化。由于全局训练批量尺寸增大，优化 $\mathcal{W}$ 的学习率按照~\citet{goyal2017accurate} 提出的 \emph{warmup} 策略，在训练开始的前 4 轮从 0.2 线性增大至 0.8，并分别在训练的第 60 轮和第 90 轮衰减 $\times 0.1$。训练样本首先被随机裁剪至 $224\times 224$ 像素并随机水平翻转，之后在 RGB 通道分别归一化；测试样本先缩放至图片短边 256 像素，之后在缩放后的图片中央裁剪 $224\times 224$ 像素区域，最后在 RGB 通道分别做归一化。其他实验配置与 CIFAR-10 上的实验配置（第~\ref{sec::gq_nets::cifar10_experiments} 节）一致。
 
-\begin{table}[htb]
-  \centering
-  \caption{完全量化的 GQ-Nets 在 ILSVRC 2012 物体分类任务上的准确率}
-  \label{tab::gq_nets::imgnet}
-  \begin{tabular}{l *{5}{c}}
-    \toprule
-    \multirow{2}{*}{主干模型} & 数值精度 &\multicolumn{2}{c}{Top-1 准确率} &\multicolumn{2}{c}{Top-5 准确率} \\
-    & （W/A） & 全精度 & 量化 & 全精度 & 量化 \\
-    \midrule
-    \multirow{5}{*}{ResNet-18} & 32/32 & 69.89 & -- & 89.27 & -- \\
-    & 5/5 & 69.63 & 68.86 & 89.16 & 88.62 \\
-    & 4/4 & 69.12 & 67.32 & 88.89 & 87.73 \\
-    & 3/3 & 68.81 & 64.16 & 88.81 & 85.91 \\
-    & 2/2 & TODO & TODO & TODO & TODO \\
-    \hdashline
-    \multirow{5}{*}{ResNet-34} & 32/32 & 73.30 & -- & 91.42 & -- \\
-    & 5/5 & 69.63 & 68.86 & 89.16 & 88.62 \\
-    & 4/4 & 69.12 & 67.32 & 88.89 & 87.73 \\
-    & 3/3 & 68.81 & 64.16 & 88.81 & 85.91 \\
-    & 2/2 & TODO & TODO & TODO & TODO \\
-    \hdashline
-    \multirow{5}{*}{MobileNet-v1} & 32/32 & 73.30 & -- & 91.42 & -- \\
-    & 5/5 & 69.63 & 68.86 & 89.16 & 88.62 \\
-    & 4/4 & 69.12 & 67.32 & 88.89 & 87.73 \\
-    & 3/3 & 68.81 & 64.16 & 88.81 & 85.91 \\
-    & 2/2 & TODO & TODO & TODO & TODO \\
-    \hdashline
-    \multirow{5}{*}{MobileNet-v2} & 32/32 & 73.30 & -- & 91.42 & -- \\
-    & 5/5 & 69.63 & 68.86 & 89.16 & 88.62 \\
-    & 4/4 & 69.12 & 67.32 & 88.89 & 87.73 \\
-    & 3/3 & 68.81 & 64.16 & 88.81 & 85.91 \\
-    & 2/2 & TODO & TODO & TODO & TODO \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+\ctable[
+  caption = 完全量化的 GQ-Nets 在 ILSVRC 2012 物体分类任务上的准确率,
+  pos = p,
+  label = tab::gq_nets::imgnet,
+]{l *{5}{c}}{
+  \tnote[a]{由于显存限制，QAT 阶段单 GPU 训练批量大小为 32，学习率对应减小一半；}
+  \tnote[b]{QAT 1 轮之后出现量化范围交错。}
+}{
+  \FL
+  \multirow{2}{*}{主干模型} & 数值精度 &\multicolumn{2}{c}{Top-1 准确率} &\multicolumn{2}{c}{Top-5 准确率} \\
+  & （W/A） & 全精度 & 量化 & 全精度 & 量化
+  \ML
+  \multirow{5}{*}{ResNet-18} & 32/32 & 69.89 & -- & 89.27 & -- \\
+  & 5/5 & 69.63 & 68.86 & 89.16 & 88.62 \\
+  & 4/4 & 69.12 & 67.32 & 88.89 & 87.73 \\
+  & 3/3 & 68.81 & 64.16 & 88.81 & 85.91 \\
+  & 2/2 & 67.56 & 52.57 & 88.06 & 77.13 \\
+  \hdashline
+  \multirow{5}{*}{ResNet-34} & 32/32 & 73.30 & -- & 91.42 & -- \\
+  & 5/5 & 72.94 & 72.40 & 91.13 & 90.81 \\
+  & 4/4 & 73.07 & 71.53 & 91.33 & 90.46 \\
+  & 3/3 & 72.58 & 68.45 & 90.95 & 88.36 \\
+  & 2/2 & 71.01 & 59.13 & 90.01 & 82.15 \\
+  \hdashline
+  \multirow{5}{*}{ResNet-50~\tmark[a]} & 32/32 & 76.15 & -- & 92.87 & -- \\
+  & 5/5 & TODO & TODO & TODO & TODO \\
+  & 4/4 & 75.44 & 74.35 & 92.51 & 91.81 \\
+  & 3/3 & TODO & TODO & TODO & TODO \\
+  & 2/2~\tmark[b] & -- & -- & -- & -- \\
+  \hdashline
+  MobileNet-v1 & 32/32 & 70.68 & -- & 89.84 & -- \\
+  & 4/4 & 68.31 & 65.04 & 88.47 & 86.09 \\
+  \hdashline
+  MobileNet-v2 & 32/32 & 71.09 & -- & 90.12 & -- \\
+  & 4/4 & 68.58 & 66.15 & 88.70 & 86.92
+  \LL
+}
 % ------------------------------------------------------------------------------
 %    COCO
 % ------------------------------------------------------------------------------
-\subsection{MS COCO 物体检测实验}
-TODO
+% \subsection{MS COCO 物体检测实验}
+% TODO
 % ==============================================================================
 %  Analysis and discussions
 % ==============================================================================
