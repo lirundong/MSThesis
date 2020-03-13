@@ -29,3 +29,7 @@ Thesis.pdf
 *.otf
 Fonts/COPYING-Fandol.txt
 Fonts/LICENSE-Source.txt
+
+# ignore data archeaves
+*.npz
+*.pth

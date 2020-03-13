@@ -91,7 +91,7 @@ GQ-Nets 在预训练阶段构造模型量化误差~\eqref{eq::gq_nets::total_los
 
 \begin{figure}[htb]
   \centering
-  \includegraphics[width=\columnwidth]{GQ_Nets/kl_to_ce_angle.pdf}
+  \includegraphics[width=\columnwidth]{GQ_Nets/grad-of-kl-detach/kl_to_ce_angle.pdf}
   \caption{脱离梯度 $\nabla_{\sigma(x_L)}\mathcal{L}_q$ 前后，最后一层权重参数 $W_L$ 收到的梯度间的余弦夹角（左图），及训练过程中 $\FpNet$ 测试准确度（右图）。}
   \label{img::gq_nets::detach_grad_cos}
 \end{figure}
@@ -126,16 +126,16 @@ GQ-Nets 在预训练阶段构造模型量化误差~\eqref{eq::gq_nets::total_los
 
 \begin{figure}[htb]
   \centering
-  \begin{subfigure}[b]{0.45\columnwidth}
+  \begin{subfigure}[t]{0.45\columnwidth}
     \centering
-    \includegraphics[width=0.7\columnwidth]{GQ_Nets/schedule.pdf}
+    \includegraphics[width=\columnwidth]{GQ_Nets/schedule/schedule.pdf}
     \caption{在训练不同阶段动态调整模型全精度损失项权重 $w_f$ 和量化误差项权重 $w_q$ 的一种策略。在模型训练初始阶段，以及每次学习率下降之后，先不优化量化误差项，之后再缓慢线性增加。}
     \label{img::gq_nets::w_fq_schedule}
   \end{subfigure}
   \quad
-  \begin{subfigure}[b]{0.45\columnwidth}
+  \begin{subfigure}[t]{0.45\columnwidth}
     \centering
-    \missingfigure[figwidth=\columnwidth]{\normalsize $w_q$ vs Acc 曲线}
+    \includegraphics[width=\columnwidth]{GQ_Nets/loss_weight/wq_acc_curve.pdf}
     \caption{损失函数权重调整策略 vs. 模型准确度}
     \label{img::gq_nets::schedule_acc}
   \end{subfigure}
@@ -153,7 +153,7 @@ GQ-Nets 在预训练阶段构造模型量化误差~\eqref{eq::gq_nets::total_los
 
 \begin{figure}[htb]
   \centering
-  \missingfigure[figwidth=\columnwidth]{\normalsize 全精度模型 vs. 量化模型中间激活分布}
+  \includegraphics[width=0.5\columnwidth]{GQ_Nets/activation/layer2_0_downsample_0.pdf}
   \caption{全精度模型 $\FpNet$ 和量化模型 $\QuantNet$ 的中间激活分布，……}
   \label{img::gq_nets::fp_q_act_dist}
 \end{figure}
@@ -311,9 +311,9 @@ GQ-Nets 也可以按照模型不完全量化的方式进行量化训练，即模
   & 2/2 & 71.01 & 59.13 & 90.01 & 82.15 \\
   \hdashline
   \multirow{5}{*}{ResNet-50~\tmark[a]} & 32/32 & 76.15 & -- & 92.87 & -- \\
-  & 5/5 & TODO & TODO & TODO & TODO \\
+  & 5/5 & 75.16 & 74.69 & 92.45 & 82.18 \\
   & 4/4 & 75.44 & 74.35 & 92.51 & 91.81 \\
-  & 3/3 & TODO & TODO & TODO & TODO \\
+  & 3/3 & 72.58 & 68.45 & 90.95 & 88.36 \\
   & 2/2~\tmark[b] & -- & -- & -- & -- \\
   \hdashline
   MobileNet-v1 & 32/32 & 70.68 & -- & 89.84 & -- \\
@@ -337,22 +337,122 @@ TODO
 %    Convergence
 % ------------------------------------------------------------------------------
 \subsection{收敛性分析}
-% loss 曲线（CE, KL）
-% running statistics: X, \tilde{X}
-% quantization parameters
-TODO
+
+\begin{figure}[htb]
+  \centering
+  \begin{subfigure}[t]{0.45\columnwidth}
+    \centering
+    \includegraphics[width=\columnwidth]{GQ_Nets/convergence/res20_train_fp_acc.pdf}
+    \caption{全精度输出训练准确度}
+    \label{img::gq_nets::res20_train_fp_acc}
+  \end{subfigure}
+  \quad
+  \begin{subfigure}[t]{0.45\columnwidth}
+    \centering
+    \includegraphics[width=\columnwidth]{GQ_Nets/convergence/res20_val_fp_acc.pdf}
+    \caption{全精度输出测试准确度}
+    \label{img::gq_nets::res20_eval_fp_acc}
+  \end{subfigure}
+  \newline
+  \vspace*{0.5 cm}
+  \newline
+  \begin{subfigure}[t]{0.45\columnwidth}
+    \centering
+    \includegraphics[width=\columnwidth]{GQ_Nets/convergence/res20_train_quant_acc.pdf}
+    \caption{量化输出训练准确度}
+    \label{img::gq_nets::res20_train_quant_acc}
+  \end{subfigure}
+  \quad
+  \begin{subfigure}[t]{0.45\columnwidth}
+    \centering
+    \includegraphics[width=\columnwidth]{GQ_Nets/convergence/res20_val_quant_acc.pdf}
+    \caption{量化输出测试准确度}
+    \label{img::gq_nets::res20_eval_quant_acc}
+  \end{subfigure}
+  \caption{使用 ResNet-20 主干网络的 GQ-Nets 在 CIFAR-10 数据集上的训练收敛情况。}
+  \label{img::gq_nets::res20_convergence}
+\end{figure}
+
+\begin{figure}[htb]
+  \centering
+  \begin{subfigure}[t]{0.45\columnwidth}
+    \centering
+    \includegraphics[width=\columnwidth]{GQ_Nets/convergence/layer3.2.conv2_act_bounds.pdf}
+    \caption{QAT 过程中激活量化边界}
+    \label{img::gq_nets::act_bounds}
+  \end{subfigure}
+  \quad
+  \begin{subfigure}[t]{0.45\columnwidth}
+    \centering
+    \includegraphics[width=\columnwidth]{GQ_Nets/convergence/layer3.2.conv2_weight_bounds.pdf}
+    \caption{QAT 过程中模型参数量化边界}
+    \label{img::gq_nets::weight_bounds}
+  \end{subfigure}
+  \caption{ResNet-20 GQ-Nets 模型在 CIFAR-10 数据集上 QAT 过程中模型 \texttt{layer3.2.conv2} 层量化参数收敛情况。}
+  \label{img::gq_nets::res20_quant_bounds}
+\end{figure}
 % ------------------------------------------------------------------------------
 %    Ablation
 % ------------------------------------------------------------------------------
 \subsection{模型简化分析}
-TODO
+
+\begin{table}[htb]
+  \caption{Full-precision (FP) and quantized (Q) top-1 accuracy for 4-bit weights and activations in ResNet-18 on ImageNet.  Components of GQ-Net are progressively applied. The first row indicates the vanilla setting.  A check mark in column ``Alt $\{W, \theta\}$'' means alternatingly optimizing $W$ and $\theta$.  A check for ``Schedule $\omega_f, \omega_q$'' means $\omega_f$ and $\omega_q$ were dynamically adjusted, as described in \S \ref{sec::gq_nets::train}.  A check for ``Detach $\sigma(x_L)$'' means that $\sigma(x_L)$ is treated as a constant and we do not propagate $\nabla_{\sigma(x_L)}\mathcal{L}_q$ during the backward pass.  A check for ``Multi-domain BN'' means that full-precision and quantized activations are normalized using separate running statistics. The full-precision reference has top-1 accuracy = 69.89.)}
+  \label{tab::gq_nets::ablation}
+  \begin{center}
+    \begin{tabular}{*{4}{c} *{2}{c}}
+      \toprule
+      Alt $\{W, \theta\}$ & Schedule $\omega_f, \omega_q$ & Detach $\sigma(x_L)$ & MD-BN & Top-1 (FP) & Top-1 (Q) \\
+      \midrule
+       & & & & 65.21 & 60.95 \\
+      \checkmark & & & & 67.14 & 65.19 \\
+      \checkmark & \checkmark & & & 66.56 & 65.42 \\
+      \checkmark & \checkmark & \checkmark & & 66.61 & 66.08 \\
+      \checkmark & \checkmark & \checkmark & \checkmark & \textbf{68.30} & \textbf{66.68} \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+\end{table}
+
 % ------------------------------------------------------------------------------
 %    Training time and extension training
 % ------------------------------------------------------------------------------
 \subsection{其他训练策略}
 % 讨论训练时间 vs. 其他方法
 % 讨论使用更“浪费资源”的训练方式，例如使用预训练权重，渐进初始化等
-TODO
+\ctable[
+  caption = 其他训练策略在 CIFAR-10 上的准确度、训练总时长比较。,
+  pos = htb,
+  label = tab::gq_nets::other_training_protocol,
+]{l *{5}{c}}{
+  \tnote[a]{时间格式：\verb|<小时: 分钟: 秒>|；}
+  \tnote[b]{不完全量化，模型输入、第一层和最后一层保留为浮点；}
+  \tnote[c]{模型训练在 NVIDIA GTX 1080Ti GPU 上进行；}
+  \tnote[d]{模型训练在 NVIDIA RTX 2080Ti GPU 上进行；}
+}{
+  \FL
+  \multirow{2}{*}{训练方法} & \multicolumn{2}{c}{训练开销} & 数值精度 &\multicolumn{2}{c}{Top-1 准确率} \\
+  & 累计轮数 & 累计用时~\tmark[a] &（W/A）& 全精度 & 量化
+  \ML
+  \emph{预训练参数} & 200 & 1:9:16~\tmark[d] & 32/32 & 91.81 & -- \\
+  \hdashline
+  \multirow{2}{*}{GQ-Nets} & 200 & 2:4:22~\tmark[d] & 2/2 & 91.66 & 84.97 \\
+    & 200 & 1:53:48~\tmark[d] & 2/2~\tmark[b] & 91.19 & 88.15 \\
+  \hdashline
+  \multirow{2}{*}{GQ-Nets + 预训练参数} & 400 & 3:12:25~\tmark[c] & 2/2 & 92.02 & 85.32 \\
+    & 400 & 3:04:04~\tmark[d] & 2/2~\tmark[b] & 91.96 & 90.01 \\
+  \hdashline
+  \multirow{4}{*}{GQ-Nets + 渐进训练} & 400 & 3:12:56~\tmark[c] & 5/5 & 92.17 & 92.20  \\
+    & 600 & 5:16:10~\tmark[c] & 4/4 & 92.70 & 92.13  \\
+    & 800 & 7:18:39~\tmark[c] & 3/3 & 92.85 & 90.89  \\
+    & 1000 & 9:20:51~\tmark[c] & 2/2 & 92.99 & 85.99  \\
+  \hdashline
+  \multirow{4}{*}{GQ-Nets + 渐进训练~\tmark[b]} & 400 & 3:17:52~\tmark[d] & 5/5 & 92.30 & 92.47 \\
+    & 600 & 5:10:59~\tmark[d] & 4/4 & 92.33 & 92.44 \\
+    & 800 & 7:16:50~\tmark[d] & 3/3 & 92.84 & 92.19 \\
+    & 1000 & 9:09:17~\tmark[d] & 2/2 & 92.50 & 90.18 
+  \LL
+}
 % ==============================================================================
 %  Conclusion
 % ==============================================================================
