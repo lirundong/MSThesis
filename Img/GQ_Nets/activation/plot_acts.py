@@ -39,14 +39,14 @@ def plot_overlapped_hist(act_pairs, fig_path):
     axs = (axs, )
   for i, (name, act_pair) in enumerate(act_pairs.items()):
     ax = axs[i]
-    ax.title.set_text(name)
+    ax.title.set_text(f"{name} Act. Distributions")
     fp_tensor = act_pair["fp"]
     q_tensor = act_pair["q"]
     ax.grid(axis="y", linestyle="--")
-    ax.hist(fp_tensor, bins=128, label=r"$w_f$")
-    ax.hist(q_tensor, bins=128, label=r"$w_q$")
+    ax.hist(fp_tensor, bins=128, label=r"$x_f$")
+    ax.hist(q_tensor, bins=128, label=r"$x_q$")
     ax.legend()
-    ax.set_xlabel(r"$w_{f, q}$ value")
+    ax.set_xlabel(r"$x_{f, q}$ value")
     ax.set_ylabel("Frequency")
   fig.tight_layout()
   fig.savefig(fig_path)

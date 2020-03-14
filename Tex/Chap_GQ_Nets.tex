@@ -84,7 +84,7 @@ GQ-Nets 在预训练阶段构造模型量化误差~\eqref{eq::gq_nets::total_los
 % ------------------------------------------------------------------------------
 %    Loss function
 % ------------------------------------------------------------------------------
-\subsection{损失函数设计}
+\subsection{损失函数设计} \label{sec::gq_nets::loss_func}
 正如在第~\ref{sec::gq_nets::q_error} 节所讨论的，GQ-Nets 损失函数~\eqref{eq::gq_nets::total_loss} 的构造思路是，通过优化原模型损失函数 $\mathcal{L}_f$ 使模型在目标任务上保持高准确度，同时优化量化误差项 $\mathcal{L}_q$ 使模型在量化后不产生明显的输出误差。然而需要注意的是，直接优化 $\mathcal{L}_q$ 会使 $x_L$ 和 $\tilde{x}_L$ 趋向一致，这一过程可能会使浮点输出对应的概率分布 $\sigma(x_L)$ 偏离目标分布 $y$，从而与 $\mathcal{L}_f$ 的优化冲突。
 
 为解决此问题，GQ-Nets 在构造 $\mathcal{L}_q$ 时，将浮点输出对应的概率分布 $\sigma(x_L)$ 看作\emph{常数项}，从而其梯度 $\nabla_{\mathcal{W}, \Theta} \mathcal{L}_q$ 只会通过量化模型的输出 $\tilde{x}_L$ 作用于 $\hat{f}_{\mathcal{W, Q}}$，使量化模型输出对应概率 $\sigma(\tilde{x}_L)$ 趋近于 $\sigma(x_L)$，而不会对 $\sigma(x_L)$ 的准确度产生负面影响。虽然 $\nabla_{\mathcal{W}, \Theta} \mathcal{L}_q$ 最终仍会作用到模型权重参数 $\mathcal{W}$ 上，但上述操作解藕了 $f_{\mathcal{W}}$ 和 $\hat{f}_{\mathcal{W, Q}}$ 的优化。如图~\ref{img::gq_nets::detach_grad_cos} 所示，解藕后 $\nabla_{\mathcal{W}} \mathcal{L}_f$ 和 $\nabla_{\mathcal{W}} \mathcal{L}_f$ 在训练过程中基本保持正交，使模型整体训练更快收敛，且最终产生更准确的模型。
@@ -111,7 +111,7 @@ GQ-Nets 在预训练阶段构造模型量化误差~\eqref{eq::gq_nets::total_los
 % ------------------------------------------------------------------------------
 %    Optimization
 % ------------------------------------------------------------------------------
-\subsection{损失函数优化}
+\subsection{损失函数优化} \label{sec::gq_nets::optimize_loss_func}
 除量化误差建模及整体损失函数构造外，使用~\eqref{eq::gq_nets::total_loss} 生成的梯度优化模型参数 $\{\mathcal{W}, \Theta\}$ 还需要解决两个问题：$\hat{f}_{\mathcal{W, Q}}$ 计算图反向传播时，不可微分算子及其他特殊算子需做相应处理处理；以及模型训练时对 $\mathcal{L}_f$ 和 $\mathcal{L}_q$ 的侧重程度。
 
 在反向传播时，GQ-Nets 使用 STE 直接将梯度“跳过”计算图中的 $\Round{\cdot}$ 等不可微分操作，即
@@ -165,7 +165,8 @@ GQ-Nets 在预训练阶段构造模型量化误差~\eqref{eq::gq_nets::total_los
 %  Experiments
 % ==============================================================================
 \section{主要实验结果} \label{sec::gq_nets::exp}
-本节在不同神经网络模型、任务和数据集上实验验证 GQ-Nets 的有效性。为验证 GQ-Nets 对模型结构的普适性，本节使用了在计算机视觉任务中广泛使用且不包含过多冗余参数的模型，包括 ResNets 系列，以及非常紧凑的 MobileNets 系列模型；为验证 GQ-Nets 对于任务的普适性，本节在物体分类和物体检测两类任务上验证了 GQ-Nets 的性能。在物体分类任务中，使用了 CIFAR-10 和 ILSVRC 2012 数据集；在物体检测任务中，使用了 MS COCO 数据集。
+本节在不同神经网络模型、任务和数据集上实验验证 GQ-Nets 的有效性。为验证 GQ-Nets 对模型结构的普适性，本节使用了在计算机视觉任务中广泛使用且不包含过多冗余参数的模型，包括 ResNets 系列，以及非常紧凑的 MobileNets 系列模型；为验证 GQ-Nets 对于大规模数据的普适性，本节在在物体分类任务中使用 CIFAR-10 和 ILSVRC 2012 数据集验证了 GQ-Nets 的性能。
+% 本节在物体分类和物体检测两类任务上验证了 GQ-Nets 的性能。在物体分类任务中，使用了 CIFAR-10 和 ILSVRC 2012 数据集；在物体检测任务中，使用了 MS COCO 数据集。
 % ------------------------------------------------------------------------------
 %    Experimental settings
 % ------------------------------------------------------------------------------
@@ -173,8 +174,8 @@ GQ-Nets 在预训练阶段构造模型量化误差~\eqref{eq::gq_nets::total_los
 \paragraph{数据集}
 本节中讨论的物体分类任务使用了 CIFAR-10 和 ILSVRC 2012 数据集。CIFAR-10~\citep{krizhevsky2009learning} 包含来自 10 个不同类别的、分辨率为 $32 \times 32$ 的图片，其中训练集包含 50K 个样本，测试集包含 10K 个样本，实验结果报告为模型在测试集上的 Top-1 分类准确度。ILSVRC 2012~\citep{ILSVRC15} 是 ImageNet~\citep{deng2009imagenet} 数据集的子集，包含了来自 1K 个类别的图片，其中训练集包含 1.2M 个样本，验证集和测试集分别包含 50K 和 100K 个样本，实验结果报告为模型在验证集上的 Top-1 及 Top-5 准确度。
 
-本节中讨论的物体检测任务使用了 MS COCO 数据集及 COCO-2017 Detection Challenge 的标注信息，下文统称 MS COCO。MS COCO~\citep{lin2014microsoft} 数据集包含 115K 训练集样本及 5K 验证集样本，每一样本上标注了来自 80 类物体的检测框（bounding box）。实验结果主要报告为在验证集检测框检测子任务上，模型输出检测框与标注框交并比（intersection over union，下文统称 IoU）阈值为 $[0.5, 0.55, \ldots 0.95]$ 的多类别平均准确度（mean average precision，下文统一记为 $\mathrm{mAP}^{0.5:0.95}$）。
-\unsure{把 COCO 上的实验单独列一节，把这一段移过去？}
+% 本节中讨论的物体检测任务使用了 MS COCO 数据集及 COCO-2017 Detection Challenge 的标注信息，下文统称 MS COCO。MS COCO~\citep{lin2014microsoft} 数据集包含 115K 训练集样本及 5K 验证集样本，每一样本上标注了来自 80 类物体的检测框（bounding box）。实验结果主要报告为在验证集检测框检测子任务上，模型输出检测框与标注框交并比（intersection over union，下文统称 IoU）阈值为 $[0.5, 0.55, \ldots 0.95]$ 的多类别平均准确度（mean average precision，下文统一记为 $\mathrm{mAP}^{0.5:0.95}$）。
+% \unsure{把 COCO 上的实验单独列一节，把这一段移过去？}
 
 \paragraph{主干模型}
 本节中使用 ResNet-\{18, 20, 50\}~\citep{He_2016} 和 MobileNet-\{v1, v2\}~\citep{howard2017mobilenets, Sandler_2018} 作为实验的主干模型（backbone network）。在 CIFAR-10 分类任务上，使用了 ResNet-20 模型。注意本章所用的 ResNet-20 与~\citet{zhou2016dorefanet, choi2018pact, li2019additive} 一致，其结构如表~\ref{tab::gq_nets::res20} 所示。
@@ -258,7 +259,7 @@ GQ-Nets 也可以按照模型不完全量化的方式进行量化训练，即模
 \ctable[
   caption = 不同量化方法的 ResNet-20 在 CIFAR-10 物体分类任务上的准确率,
   pos = htb,
-  label = tab::gq_nets::cifar_compare,
+  label = tab::gq_nets::cifar_comparison,
 ]{l *{5}{c}}{
   \tnote[a]{\citet{zhou2016dorefanet} 没有报告 CIFAR-10 实验结果，数据取自~\citet{choi2018pact} 的复现报告；}
   \tnote[b]{不完全量化，模型输入、第一层和最后一层保留为浮点；}
@@ -279,7 +280,7 @@ GQ-Nets 也可以按照模型不完全量化的方式进行量化训练，即模
   \LL
 }
 
-表~\ref{tab::gq_nets::cifar_compare} 列出了 GQ-Nets 与其他量化训练方法在 CIFAR-10 数据集上的性能对比，这些数据同时包含了模型被完全量化，及模型不完全量化时的准确率。\improvement{列出 pretrained GQ-Nets 性能，以及更仔细的分析}
+表~\ref{tab::gq_nets::cifar_comparison} 列出了 GQ-Nets 与其他量化训练方法在 CIFAR-10 数据集上的性能对比，这些数据同时包含了模型被完全量化，及模型不完全量化时的准确率。由于 GQ-Nets 的训练策略强调在预训练阶段且不引入过多训练开销，GQ-Nets 不使用预训练参数且训练流程不超过全精度模型预训练轮数，故不同数值精度下完全量化的 GQ-Nets 的模型准确度与不完全量化的 \citet{zhou2016dorefanet} 相当，与领域最优的 \citet{Zhang_2018, li2019additive} 差距明显。但是正如将在第~\ref{sec::gq_nets::other_training_protocol} 节所讨论的，如果不在意引入更多训练预算，GQ-Nets 模型准确度可以达到或超过上述领域内现有最优方法。
 % ------------------------------------------------------------------------------
 %    ILSVRC
 % ------------------------------------------------------------------------------
@@ -292,37 +293,73 @@ GQ-Nets 也可以按照模型不完全量化的方式进行量化训练，即模
   label = tab::gq_nets::imgnet,
 ]{l *{5}{c}}{
   \tnote[a]{由于显存限制，QAT 阶段单 GPU 训练批量大小为 32，学习率对应减小一半；}
-  \tnote[b]{QAT 1 轮之后出现量化范围交错。}
+  \tnote[b]{QAT 1 轮之后出现量化范围交错；}
+  \tnote[c]{模型实现及全精度参数取自 \verb|torchvision (v0.5.0)|：\url{https://pytorch.org/docs/stable/torchvision/models.html}；}
+  \tnote[d]{模型实现取自：\url{https://github.com/marvis/pytorch-mobilenet}；}
 }{
   \FL
-  \multirow{2}{*}{主干模型} & 数值精度 &\multicolumn{2}{c}{Top-1 准确率} &\multicolumn{2}{c}{Top-5 准确率} \\
-  & （W/A） & 全精度 & 量化 & 全精度 & 量化
+  \multirow{2}{*}{主干模型} & \multirow{2}{*}{数值精度（W/A）} &\multicolumn{2}{c}{Top-1 准确率} &\multicolumn{2}{c}{Top-5 准确率} \\
+  & & 全精度 & 量化 & 全精度 & 量化
   \ML
-  \multirow{5}{*}{ResNet-18} & 32/32 & 69.89 & -- & 89.27 & -- \\
+  \multirow{5}{*}{ResNet-18} & 32/32~\tmark[c] & 69.89 & -- & 89.27 & -- \\
   & 5/5 & 69.63 & 68.86 & 89.16 & 88.62 \\
   & 4/4 & 69.12 & 67.32 & 88.89 & 87.73 \\
   & 3/3 & 68.81 & 64.16 & 88.81 & 85.91 \\
   & 2/2 & 67.56 & 52.57 & 88.06 & 77.13 \\
   \hdashline
-  \multirow{5}{*}{ResNet-34} & 32/32 & 73.30 & -- & 91.42 & -- \\
+  \multirow{5}{*}{ResNet-34} & 32/32~\tmark[c] & 73.30 & -- & 91.42 & -- \\
   & 5/5 & 72.94 & 72.40 & 91.13 & 90.81 \\
   & 4/4 & 73.07 & 71.53 & 91.33 & 90.46 \\
   & 3/3 & 72.58 & 68.45 & 90.95 & 88.36 \\
   & 2/2 & 71.01 & 59.13 & 90.01 & 82.15 \\
   \hdashline
-  \multirow{5}{*}{ResNet-50~\tmark[a]} & 32/32 & 76.15 & -- & 92.87 & -- \\
+  \multirow{5}{*}{ResNet-50~\tmark[a]} & 32/32~\tmark[c] & 76.15 & -- & 92.87 & -- \\
   & 5/5 & 75.16 & 74.69 & 92.45 & 82.18 \\
   & 4/4 & 75.44 & 74.35 & 92.51 & 91.81 \\
   & 3/3 & 72.58 & 68.45 & 90.95 & 88.36 \\
   & 2/2~\tmark[b] & -- & -- & -- & -- \\
   \hdashline
-  MobileNet-v1 & 32/32 & 70.68 & -- & 89.84 & -- \\
+  MobileNet-v1 & 32/32~\tmark[d] & 70.68 & -- & 89.84 & -- \\
   & 4/4 & 68.31 & 65.04 & 88.47 & 86.09 \\
   \hdashline
-  MobileNet-v2 & 32/32 & 71.09 & -- & 90.12 & -- \\
+  MobileNet-v2 & 32/32~\tmark[c] & 71.09 & -- & 90.12 & -- \\
   & 4/4 & 68.58 & 66.15 & 88.70 & 86.92
   \LL
 }
+
+使用不同主干模型和量化精度的实验结果见表~\ref{tab::gq_nets::imgnet} 所示。在所有主干模型所列结果的第 1 行为其全精度下准确度，除 MobileNet-v1 模型实现来自 GitHub 第三方实现外，其他模型实现及全精度参数来自 \verb|torchvision| 软件包。在模型完全量化的情况下，使用 ResNet 系列主干模型的 GQ-Nets 可在 W4/A4 及以上数值精度下保留可接受的准确度：在 W4/A4 数值精度下，ResNet-50、-34、-18 模型的量化输出 Top-1 准确率相较其全精度基线仅下降 $-1.80\%$、 $-1.77\%$ 和 $-2.57\%$；在 W5/A5 数值精度下，Top-1准确率相较全精度基线下降 $-1.46\%$、$-0.90\%$ 和 $-1.03\%$。考虑到 GQ-Nets 训练策略并不使用预训练模型，即量化模型的累计训练轮数与全精度基线是一致的，且 GQ-Nets 模型量化了部署时的所有参数及数值运算操作，这样的准确度损失相较于部署全量化模型带来的加速优势，是可以接受的。
+
+值得注意的是，本身已经足够紧凑的 MobileNet 系列模型在 GQ-Nets 框架下仍能在完全量化后保持可接受的准确率。在 W4/A4 数值精度下，MobileNet-v1、-v2 模型量化输出 Top-1 准确率相较于全精度基线下降分别为 $-5.64\%$ 和 $-4.94\%$。
+
+另外需要注意的是，极低数值精度下 GQ-Nets 在较困难的大规模数据集上，会出现较小规模数据集上更明显的准确度损失。例如在 W2/A2 数值精度下对比表~\ref{tab::gq_nets::imgnet} 和表~\ref{tab::gq_nets::cifar_comparison} 上的结果，会发现在 ILSVRC 2012 上训练的 ResNet 系列模型 Top-1 准确度损失在 $-14.17\% \sim -17.32\%$ 之间，而 CIFAR-10 上训练的 ResNet-20 准确度损失为 $-6.78\%$。同时，参数量较少的模型在量化后也会带来更多的准确度损失，例如 ResNet-18 模型量化后的准确率下降在各数值精度下均高于 ResNet-50。
+
+\begin{table}[htb]
+  \caption{Comparison with other strict quantization methods on top-1 and top-5 accuracy for ImageNet. W/A indicates the quantization bitwidths for weights and activations, respectively. 32/32 indicates full-precision models.}
+  \label{tab::gq_nets::imgnet_comparison}
+  \begin{center}
+    \begin{tabular}{l *{7}{c}}
+      \toprule
+      \multirow{2}{*}{量化方法} & \multirow{2}{*}{W/A} & \multicolumn{2}{c}{ResNet-18} & \multicolumn{2}{c}{MobileNet-v1} & \multicolumn{2}{c}{MobileNet-v2} \\
+      & & Top-1 & Top-5 & Top-1 & Top-5 & Top-1 & Top-5 \\
+      \midrule
+      \emph{全精度基线} & 32/32 & 69.89 & 89.27 & 70.68 & 89.64 & 71.09 & 90.12 \\
+      \hdashline
+      \multirow{2}{*}{\citet{krishnamoorthi2018quantizing}} & 4/8 & & & 65.00 & & 62.00 & \\
+        & 8/4 & & & 64.00 & & 58.00 & \\
+      \hdashline
+      \citet{jacob2018quantization} & 5/5 & 64.64 & 86.67 & & & & \\
+      \hdashline
+      \multirow{2}{*}{\citet{louizos2018relaxed}} & 5/5 & 65.10 & 86.57 & 61.38 & 83.73 & & \\
+        & 4/4 & 61.52 & 83.99 & & & & \\
+      \hdashline
+      % \multirow{2}{*}{GQ-Nets}  & 5/5 & 68.86 & 88.62 & & & & \\
+        GQ-Nets & 4/4 & 67.32 & 87.73 & 65.04 & 86.09 & 66.15 & 86.92 \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+\end{table}
+
+由于 GQ-Nets 主要关注模型完全量化后的性能表现，故在与其他方法对比时，对比基线选取为同样对模型做完全量化的 \citet{jacob2018quantization, krishnamoorthi2018quantizing, louizos2018relaxed}。在 ILSVRC 2012 数据集上的对比结果见表~\ref{tab::gq_nets::imgnet_comparison} 所示。在模型压缩领域广受关注的 ResNet-18 模型上，4-bit GQ-Nets 的量化 Top-1 准确度优于先前最优的完全量化方法 \citet{louizos2018relaxed} 在 5-bit 和 4-bit 上的准确度——在 W4/A4 数值精度下，GQ-Nets 仅损失 $-2.57\%$ 准确度，而 \citet{louizos2018relaxed} 在 W5/A5 和 W4/A4 下分别损失了 $-4.79\%$ 和 $-8.37\%$ 准确度。在广泛部署至低性能终端的 MobileNet 系列模型上，GQ-Nets 相较与 \citet{jacob2018quantization, krishnamoorthi2018quantizing} 在更低数值精度下取得了近似或更高准确度：在 MobileNet-v1 模型上，W4/A4 精度的 GQ-Nets 准确度较 W4/A8 精度的 \citet{krishnamoorthi2018quantizing} 高 $+0.04\%$（$65.04\%$ Top-1 准确度对比 $65.00\%$ Top-1 准确度）；在 MobileNet-v2 模型上，W4/A4 精度的 GQ-Nets 模型较 W4/A8 的 \citet{krishnamoorthi2018quantizing} 准确度提高了 $+4.15\%$（$66.15\%$ Top-1 准确度对比 $62.00\%$ Top-1 准确度）。
 % ------------------------------------------------------------------------------
 %    COCO
 % ------------------------------------------------------------------------------
@@ -332,7 +369,7 @@ GQ-Nets 也可以按照模型不完全量化的方式进行量化训练，即模
 %  Analysis and discussions
 % ==============================================================================
 \section{分析实验及讨论}
-TODO
+由于第~\ref{sec::gq_nets::exp} 节报告了使用不同主干模型、数值精度的 GQ-Nets 在不同任务和数据集上的表现，同时 GQ-Nets 在算法设计和训练策略中包含了多个元素，故本节对 GQ-Nets 进行更深入的分析讨论。本节首先讨论不同数值精度下 GQ-Nets 训练过程的收敛情况，之后通过模型简化实验（ablation study）确认 GQ-Nets 算法各模块对最终性能的贡献，最后讨论在训练预算更充裕时，可以显著改进 GQ-Nets 任务准确率的其他训练策略。
 % ------------------------------------------------------------------------------
 %    Convergence
 % ------------------------------------------------------------------------------
@@ -373,6 +410,10 @@ TODO
   \label{img::gq_nets::res20_convergence}
 \end{figure}
 
+本节通过观察不同数值精度的 GQ-Nets 模型在 CIFAR-10 数据集上训练过程中的训练/测试准确度，以及其中主要量化参数的分布变化，来获知并探讨 GQ-Nets 的收敛性特征。图~\ref{img::gq_nets::res20_convergence} 展示了使用 ResNet-20 主干模型的 GQ-Nets 在训练过程中其全精度输出 $\sigma(x_L)$ 和量化输出 $\sigma(\tilde{x}_L)$ 在训练过程中在 CIFAR-10 训练/测试集上的准确度。如图~\ref{img::gq_nets::res20_train_fp_acc} 及图~\ref{img::gq_nets::res20_eval_fp_acc} 所示，不同数值精度下 GQ-Nets 的全精度分支几乎表现一致，即引入量化损失几乎不对模型的原有训练过程产生负面影响。这进一步验证了第~\ref{sec::gq_nets::optimize_loss_func} 节及图~\ref{img::gq_nets::detach_grad_cos} 中声明的，GQ-Nets 中减少量化损失产生的梯度与原模型训练梯度基本正交的观点。
+
+需要注意的是，如图~\ref{img::gq_nets::res20_train_quant_acc} 及图~\ref{img::gq_nets::res20_eval_quant_acc} 所示，不同量化精度的 GQ-Nets 量化分支收敛速率和最终准确度可能会呈现明显差别。在 CIFAR-10 数据集上，W5/A5 和 W4/A4 数值精度的收敛速率和最终准确率没有明显差别，说明在相对简单的任务上 4-bit 数值精度即可达到模型完全量化后保持模型性能的要求；W2/A2 数值精度在训练时的收敛速率与其他设置有明显差距，且其在测试集上的准确率也会在训练过程中出现较大波动，说明极低比特量化与一般量化在训练时存在明显差别，其训练策略需要更仔细考虑。
+
 \begin{figure}[htb]
   \centering
   \begin{subfigure}[t]{0.45\columnwidth}
@@ -391,35 +432,44 @@ TODO
   \caption{ResNet-20 GQ-Nets 模型在 CIFAR-10 数据集上 QAT 过程中模型 \texttt{layer3.2.conv2} 层量化参数收敛情况。}
   \label{img::gq_nets::res20_quant_bounds}
 \end{figure}
+
+图~\ref{img::gq_nets::res20_quant_bounds} 展示了使用 ResNet-20 主干网络的 GQ-Nets 中 \verb|layer3.2.conv2| 层（主干网络最后一个 2D 卷积层）在训练过程中，其模型参数和输出激活的量化边界在不同量化精度下的收敛情况。随着量化数值精度的降低，模型参数和激活的量化范围都在逐渐变窄，说明可用量化点较低的极低比特量化的模型在训练过程中会试图通过降低量化范围来提高量化点间的分辨率。同时需要注意模型参数量化和激活量化在训练过程中呈现了不同的趋势：图~\ref{img::gq_nets::act_bounds} 说明模型激活在训练初期首先逐渐增大量化范围，在学习率衰减后量化范围开始收窄，并在模型测试准确率稳定后同样趋于稳定；而图~\ref{img::gq_nets::weight_bounds} 说明模型参数在训练开始后就迅速趋于缩减分布数值范围，且量化数值精度越低，其收敛的速率越显著。
 % ------------------------------------------------------------------------------
 %    Ablation
 % ------------------------------------------------------------------------------
 \subsection{模型简化分析}
 
 \begin{table}[htb]
-  \caption{Full-precision (FP) and quantized (Q) top-1 accuracy for 4-bit weights and activations in ResNet-18 on ImageNet.  Components of GQ-Net are progressively applied. The first row indicates the vanilla setting.  A check mark in column ``Alt $\{W, \theta\}$'' means alternatingly optimizing $W$ and $\theta$.  A check for ``Schedule $\omega_f, \omega_q$'' means $\omega_f$ and $\omega_q$ were dynamically adjusted, as described in \S \ref{sec::gq_nets::train}.  A check for ``Detach $\sigma(x_L)$'' means that $\sigma(x_L)$ is treated as a constant and we do not propagate $\nabla_{\sigma(x_L)}\mathcal{L}_q$ during the backward pass.  A check for ``Multi-domain BN'' means that full-precision and quantized activations are normalized using separate running statistics. The full-precision reference has top-1 accuracy = 69.89.)}
+  \centering
+  \caption{使用 ResNet-18 主干模型，量化数值精度为 W4/A4 的的 GQ-Nets 在 ILSVRC 2012 数据集上的模型简化实验。第~\ref{sec::gq_nets::train} 节中改进 GQ-Nets 损失函数及训练过程的算法模块被依次加入到图~\ref{img::gq_nets::arch} 所示的 GQ-Nets 基本架构中，以验证各改进对最终性能的贡献。表格第 1 行指不含任何改进的 GQ-Nets 在 W4/A4 数值精度下训练完成后，其全精度和量化输出的 Top-1 准确度；包含 Alt. $\{\mathcal{W}, \Theta\}$ 的实验结果指模型训练时交替优化模型权重参数 $\mathcal{W}$ 和量化参数 $\Theta$；包含 Sch. $w_f, w_q$ 的实验结果指训练时按照图~\ref{img::gq_nets::schedule} 所示策略动态调整模型原损失函数 $\mathcal{L}_f$ 和量化损失函数 $\mathcal{L}_q$ 的权重；包含 Detach $\sigma(x_L)$ 的实验结果指模型损失函数按照第~\ref{sec::gq_nets::loss_func} 节讨论，不回传梯度 $\nabla_{\sigma(x_L)} \mathcal{L}_q$；包含 MD-BN 的实验结果指模型在 BN 操作中，对全精度激活和量化激活使用不同的统计值 $\{\mu, \sigma\}$ 和 $\{\hat{\mu}, \hat{\sigma}\}$。模型在全精度下的基准 Top-1 准确度为 69.89\%。}
   \label{tab::gq_nets::ablation}
-  \begin{center}
-    \begin{tabular}{*{4}{c} *{2}{c}}
-      \toprule
-      Alt $\{W, \theta\}$ & Schedule $\omega_f, \omega_q$ & Detach $\sigma(x_L)$ & MD-BN & Top-1 (FP) & Top-1 (Q) \\
-      \midrule
-       & & & & 65.21 & 60.95 \\
-      \checkmark & & & & 67.14 & 65.19 \\
-      \checkmark & \checkmark & & & 66.56 & 65.42 \\
-      \checkmark & \checkmark & \checkmark & & 66.61 & 66.08 \\
-      \checkmark & \checkmark & \checkmark & \checkmark & \textbf{68.30} & \textbf{66.68} \\
-      \bottomrule
-    \end{tabular}
-  \end{center}
+  \begin{tabular}{*{4}{c} *{2}{c}}
+    \toprule
+    Alt. $\{\mathcal{W}, \Theta\}$ & Sch. $w_f, w_q$ & Detach $\sigma(x_L)$ & MD-BN & Top-1 (FP) & Top-1 (Q) \\
+    \midrule
+      & & & & 65.21 & 60.95 \\
+    \checkmark & & & & 67.14 & 65.19 \\
+    \checkmark & \checkmark & & & 66.56 & 65.42 \\
+    \checkmark & \checkmark & \checkmark & & 66.61 & 66.08 \\
+    \checkmark & \checkmark & \checkmark & \checkmark & \textbf{68.30} & \textbf{66.68} \\
+    \bottomrule
+  \end{tabular}
 \end{table}
 
+本节在 ILSVRC 2012 数据集上，对使用 ResNet-18 主干模型且量化数值精度为 W4/A4 的 GQ-Nets 进行模型简化分析，结果见表~\ref{tab::gq_nets::ablation}。在不使用任何针对损失函数和训练过程的改进的情况下，如图~\ref{img::gq_nets::arch} 所示的基本 GQ-Nets 量化准确度为 $60.95\%$。具体地，该基线模型在训练每一步同时优化模型权重参数 $\mathcal{W}$ 和量化参数 $\Theta$；在训练全程为损失函数各项赋予相等权重 $w_f = w_q = 0.5$；反向传播时不额外修改计算图，量化损失项 $\mathcal{L}_q$ 的梯度同时反向传播至模型全精度输出 $\sigma(x_L)$ 和量化输出 $\sigma(\tilde{x}_L)$；所有 BN 层对量化激活和全精度激活使用同一套正则化统计参数 $\{\mu, \sigma\}$。
+
+首先讨论训练过程中交替优化模型权重参数 $\mathcal{W}$ 和量化参数 $\Theta$ 的贡献。对比表~\ref{tab::gq_nets::ablation} 第 1 行和第 2 行，交替优化后模型在基线上提高了 $+4.24\%$ 量化准确度。这说明在基线模型中 $\{\mathcal{W}, \Theta\}$ 的优化可能是互相耦合的，即优化方向 $\nabla_{\mathcal{W}} \mathcal{L}$ 和 $\nabla_{\Theta} \mathcal{L}$ 都分别能够提升模型的准确度，但是合并这两个优化方向可能导致次优的最终结果。
+
+对比表~\ref{tab::gq_nets::ablation} 第 2 行和第 3 行可以看出，在训练过程中动态调整全精度损失项权重 $w_f$ 和量化损失项权重 $w_q$ 在交替优化的基础上提高了 $+0.23\%$ 准确度。这说明 GQ-Nets 在训练过程中全精度损失和量化损失之间最优重要性并不是恒定的，使用适当的方式对损失权重做动态调整可以改善模型的最终性能。
+
+通过不回传量化损失对于全精度输出的梯度 $\nabla_{\sigma(x_L)} \mathcal{L}_q$ 可以再提高 $+0.66\%$ 量化准确度。这说明梯度 $\nabla_{\sigma(x_L)} \mathcal{L}_q$ 是导致全精度模型优化和量化模型优化耦合的原因之一，脱离此梯度可以一定程度解藕优化过程，改善量化模型的准确度。
+
+最后，模型 BN 层对量化激活和全精度激活使用不同的正则化统计参数带来了 $+0.60\%$ 的准确度提升。这说明如图~\ref{img::gq_nets::fp_q_act_dist} 所示的量化/全精度激活分布不一致会影响模型训练，且用同一套统计参数不足以同时对这两类激活做正则化。由于 GQ-Nets 框架内即同时包含了量化及全精度分支，故需要对不同分支分别采用不同的正则化统计参数。
 % ------------------------------------------------------------------------------
 %    Training time and extension training
 % ------------------------------------------------------------------------------
-\subsection{其他训练策略}
-% 讨论训练时间 vs. 其他方法
-% 讨论使用更“浪费资源”的训练方式，例如使用预训练权重，渐进初始化等
+\subsection{其他训练策略} \label{sec::gq_nets::other_training_protocol}
+
 \ctable[
   caption = 其他训练策略在 CIFAR-10 上的准确度、训练总时长比较。,
   pos = htb,
@@ -431,7 +481,7 @@ TODO
   \tnote[d]{模型训练在 NVIDIA RTX 2080Ti GPU 上进行；}
 }{
   \FL
-  \multirow{2}{*}{训练方法} & \multicolumn{2}{c}{训练开销} & 数值精度 &\multicolumn{2}{c}{Top-1 准确率} \\
+  \multirow{2}{*}{训练策略} & \multicolumn{2}{c}{训练开销} & 数值精度 &\multicolumn{2}{c}{Top-1 准确率} \\
   & 累计轮数 & 累计用时~\tmark[a] &（W/A）& 全精度 & 量化
   \ML
   \emph{预训练参数} & 200 & 1:9:16~\tmark[d] & 32/32 & 91.81 & -- \\
@@ -453,6 +503,14 @@ TODO
     & 1000 & 9:09:17~\tmark[d] & 2/2 & 92.50 & 90.18 
   \LL
 }
+
+从表~\ref{tab::gq_nets::cifar_comparison} 和表~\ref{tab::gq_nets::imgnet_comparison} 的数据可以得知，由于 GQ-Nets 强调在模型预训练阶段，以不高于原模型训练轮数的开销得出量化友好模型，导致了 GQ-Nets 与其他注重量化模型准确率而不关注训练开销的方法~\citep{jung2019learning, li2019additive} 尚有明显量化准确度差距。本节探讨若不关注训练开销，可以改进 GQ-Nets 量化准确率的其他训练策略，并在 CIFAR-10 数据集和 ResNet-20 模型上比较这些策略与第~\ref{sec::gq_nets::train} 节讨论的训练策略的实际训练开销及模型最终准确率比较。
+
+领域内基于 QAT 的量化模型训练方法一般会使用全精度\emph{预训练参数}，即先将模型以全精度在任务数据上训练至收敛，再使用收敛后的参数进行 QAT 得到量化准确率足够高的模型。本节验证了使用预训练参数的 GQ-Nets 的训练策略，具体地，我们先将全精度模型按照第~\ref{sec::gq_nets::cifar10_experiments} 节训练策略在 CIFAR-10 训练集上训练 200 轮至收敛，之后以 W2/A2 量化精度重复上述训练流程，并报告模型最终准确率和累计训练时长。下文称此训练策略为\emph{GQ-Nets + 预训练参数}。
+
+在训练极低比特的量化模型时，\citet{li2019additive} 使用了训练开销较大但最终准确率改善明显的训练策略：例如在训练 W2/A2 数值精度的极低比特模型时，先使用全精度预训练参数初始化 W5/A5 数值精度的普通量化模型，待训练收敛后再以 W5/A5 模型参数初始化 W4/A4 数值精度的模型并以相同流程训练，以此渐进地降低训练过程中模型量化数值精度，直至得到训练收敛的 W2/A2 模型为止。本节称这种训练策略为\emph{渐进训练}，并将此策略应用至 GQ-Nets 的训练过程中。下文称此训练策略为\emph{GQ-Nets + 渐进训练}。
+
+将上述不考虑训练开销的训练策略应用至 GQ-Nets 后的结果见表~\ref{tab::gq_nets::other_training_protocol} 所示，其中列出了不同训练策略达到目标量化精度所用的累计训练轮数、累计训练用时及最终的模型准确度。表中也同时列出了模型量化与不完全量化的 GQ-Nets 在这些训练策略下的开销与性能。使用预训练参数在完全量化的 GQ-Nets 上改善了 $+0.35\%$ 准确度，在不完全量化的 GQ-Nets 上改善了 $+1.86\%$ 准确度，但代价是训练轮数从 200 轮增至 400 轮。使用渐进训练可明显改善极低比特量化模型的准确率：例如在 W2/A2 量化精度下，使用渐进训练策略可以使完全量化的 GQ-Nets 准确率提高 $+1.02\%$，不完全量化的 GQ-Nets 准确率提高 $+2.03\%$，从而达到或超过先前准确率最高的~\citet{Zhang_2018, li2019additive} 的准确率水平。但是代价是训练轮数达到了 GQ-Nets 训练策略的 5 倍，即使在 NVIDIA RTX 2080Ti GPU 上仍需要约 9 小时才能得到在 CIFAR-10测试集上，以 W2/A2 量化精度达到 $90.18\%$ 准确率的模型。
 % ==============================================================================
 %  Conclusion
 % ==============================================================================
