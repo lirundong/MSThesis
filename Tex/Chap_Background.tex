@@ -1,16 +1,131 @@
 \chapter{背景} \label{chap::background}
-TODO
+本章首先简要介绍深度学习和深度神经网络的基本原理，以及基于深度学习的现代目标检测算法。之后介绍现代深度学习普遍面临的存储、运算开销问题，以及随之兴起的高效深度学习的进展。最后介绍本文重点关注的神经网络量化压缩加速技术近年来在算法、软件及硬件方面的发展，面临的主要挑战，以及与后续章节讨论内容相关的其他工作。
 
-% ==============================================================================
-%  Efficient Deep Learning
-% ==============================================================================
-\section{高效深度学习}
-TODO
+深度学习是机器学习的子集，深度学习使用神经网络学习并解决一系列机器学习问题~\citep{lecun2015deep}。神经网络由一系列\emph{神经元}及神经元之间的\emph{连接}构成。\emph{神经元}是神经网络的基本感知单元，神经元根据其在神经网络拓扑中的位置被划归至不同\emph{层}。第一层神经元被称为网络输入，最后一层神经元被称为网络输出。每一神经元有各自的数值表示，其数值大小表示该感知单元对网络输入的响应强度。网络输入之后的神经网络每一层内，神经元与前一层部分或全部神经元相\emph{连接}，且同一层内的神经元互不连接。每一连接有表示其连接强度的数值大小，同一神经网络内表示所有连接强度的数值组成的集合称为该模型的\emph{参数}。一般认为层数超过 8 层的神经网络为“深度”神经网络~\citep{krizhevsky2012imagenet}。
 
+深度神经网络通过\emph{前向传播}和\emph{反向传播}在目标任务上进行推理和梯度计算，使用\emph{随机梯度下降}等算法对模型参数进行更新。以常见的有监督机器学习任务为例：在某一完整标注的数据集 $\mathcal{D} = \{x_i, y_i\}_{i=1\ldots N}$ 上，欲训练一包含参数 $\mathcal{W} = \{w_1, \ldots w_L\}$ 的 $L$ 层神经网络 $\FpNet$。首先需要以一定方法对模型参数 $\mathcal{W}$ 进行\emph{初始化}，得到模型每一层在训练步数 $t=0$ 时的参数 $\{w_1^{t=0}, \ldots w_L^{t=0}\}$。随后采样一批量大小为 $B$ 的小批量数据 $\{x_j, y_j\}_{j=1\ldots B} \in \mathcal{D}$，按照一定流程 $p(\cdot)$ 将 $[x_{1, \ldots B}]$ 做预处理后，作为网络输入送入模型 $\FpNet$ 中，表示为 $a_0 = p(x_{1, \ldots B})$。之后从模型第 $l=1$ 层开始，根据当前层的参数 $w_l^t$ 计算层内各神经元的响应值 $\tilde{a}_{l, k}, k = 1, \ldots K_l$，其中 $K_l$ 表示当前层神经元数目。$\tilde{a}_{l, k}$ 被计算为与该神经元相连接的上一层神经元的响应数值与连接强度的乘积加和——以全连接网络为例，$\tilde{a}_l = w_l^t a_{l-1}$。每一神经元在实际更新其激活值前，还要先经过特定非线性函数 $g(\cdot)$，以增加网络的表达能力——即每一神经元的实际激活值被计算为 $a_{l, k} = g(\tilde{a}_{l, k})$。根据此过程从网络第 $1$ 层计算至网络第 $L$ 层，得到模型的最终输出 $a_L = \FpNet(a_0)$。上述过程即为模型的前向传播，又称为模型的\emph{推理}。
+
+神经网络的输出 $a_L$ 在不同任务中，以不同方式被解释。例如在分类任务中，$a_L \in \mathbb{R}^{B \times C}$ 中的元素 $a_{L, b, c}$ 表示小批量中第 $b$ 个样本属于第 $c$ 类物体的概率；在回归任务中，$a_L \in \mathbb{R}^{B \times T}$ 中的元素 $a_{L, b, t}$ 表示第 $b$ 个样本在第 $t$ 个回归任务上的输出值。\footnote{注意此处 $a_{L, b, t}$ 的下标 $t$ （指代模型\emph{任务 task}）与参数 $w_l^t$ 的上标 $t$ （指代训练的\emph{步数 time stamp}）不一致，请读者根据上下文区分。}在模型训练过程中，前向传播过程结束后，需要根据学习任务定义的损失函数 $\mathcal{L}$ 和当前小批量输入的标注 $[y_{1, \ldots B}]$ 计算模型在 $t=0$ 步的\emph{损失}值 $\mathcal{L}(a_L, y_{1, \ldots B})$，并根据\emph{链式法则}计算模型参数的梯度 $\{\mathrm{d}w_1, \ldots \mathrm{d}w_L\}$。同样以全连接网络为例，在模型第 $l$ 层神经元对应的梯度 $\mathrm{d} a_l$ 计算就绪后，该层连接参数的梯度被计算为 $\mathrm{d} w_l = \mathrm{d} a_l \diff{g(\tilde{a}_l)}{\tilde{a}_l} a_{l-1}$。从网络第 $L$ 层开始，从后向前通过链式法则计算梯度 $\mathrm{d}w_L, \ldots \mathrm{d}w_1$ 至网络第 $1$ 层的过程即被称为模型的反向传播。
+
+在模型反向传播完成后，则通过梯度下降等方法，从参数梯度的相反方向更新模型参数。也就是说，神经网络的训练一般使用一阶方法。模型参数更新的实际幅度与参数梯度成正比，梯度幅度与实际更新步长间的比值称为\emph{学习率}。具体地，在给定学习率 $\alpha$ 后，模型参数基本的梯度下降更新表示为 $w_l^{t+1} := w_l^t - \alpha \mathrm{d} w_l$。参数更新至 $w_{1, \ldots L}^{t+1}$ 之后，继续下一轮迭代。随机采样小批量数据直至训练集 $\mathcal{D}$ 耗尽的过程称为训练 1 \emph{轮}，参数较多或数据集较为复杂的任务可能要训练数百轮，最终输出收敛后的模型 $f_{\mathcal{W}^*}$。
+
+深度学习算法非常简明，但正是这些简单参数化操作的非线性组合，在近年来爆发增长的可用数据及计算力加持下，逐渐印证了 \emph{more is different}~\citep{anderson1972more} 的哲学原理——深度学习在计算机视觉、自然语言处理、推荐系统等方面取得了显著成功：在计算机视觉领域，深度学习被应用于视频分析、；在自然语言处理领域，循环神经网络、Transformer、BERT 等模型被应用于……等任务；在推荐系统领域，……。
+\improvement{更多的引用和概述}
 % ==============================================================================
 %  Object Detection in Deep Learning Era
 % ==============================================================================
 \section{基于深度学习的目标检测}
+目标检测是计算机视觉中最基本且重要的任务之一。给定一张输入图片，目标检测算法需要给出图片中目标物体边界框（bounding box）的精确坐标，并给出每一边界框对应的目标类别。因此，目标检测算法需要同时完成针对输入图片的回归和分类任务。在深度学习被应用到计算机视觉任务之前，目标检测算法一般依赖领域专家手工设计的图像特征提取算子，以及滑动窗口、多尺度级联、目标结构化拆分等准确度改进手段。这一阶段的代表性工作包括 Viola Jones 检测算法~\citep{viola2001rapid, viola2004robust}、HOG 检测算法（Histogram of Oriented Gradients, \citet{dalal2005histograms}）、DPM 检测算法（Deformable Part-based Model, \citet{felzenszwalb2008discriminatively, felzenszwalb2009object, girshick2011object, girshick2012rigid}）等。
+
+由于深度神经网络——特别是深度卷积神经网络——在适当的模型结构及损失函数设计下，能够有效地提取图像的空间、语意特征，并能够有效学习分类、回归等任务，因此近年来被广泛运用于目标检测任务中。下文称基于深度学习的目标检测算法为\emph{现代目标检测算法}。现代目标检测算法肇始于 RCNN~\citep{girshick2015region}，之后逐渐发展分化为\emph{二阶段检测算法（two-stage detectors）}和\emph{一阶段检测算法（one-stage detectors）}。
+% ------------------------------------------------------------------------------
+%    Two-stage detectors
+% ------------------------------------------------------------------------------
+\subsection{二阶段检测算法}
+二阶段检测算法的核心思路是：将目标检测拆分为两部分，算法第一阶段算法先提出一定数目的候选边界框，通过一定方法过滤明显错误的候选框后，算法第二阶段再对保留的候选框做细粒度修正和分类，最终达到输出准确度。算法第一阶段一般称为 proposal，第二阶段一般称为 refinement，其遵循的是“由粗到细”（from coarse to fine）的设计思想。本节介绍近年来有代表性的二阶检测算法。
+
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=0.8\columnwidth]{Img/Background/RCNN.pdf}
+  \caption{RCNN 的算法架构，图片来自~\citet{girshick2015region}}
+  \label{img::background::RCNN}
+\end{figure}
+
+RCNN （Regions with CNN features, \citet{girshick2015region}）是最先使用深度卷积网络的现代目标检测算法。其架构如图~\ref{img::background::RCNN} 所示，首先在输入图片上使用 selective search~\citep{van2011segmentation} 选取一定数目的候选检测框（region of interests，下文简称 RoI）并裁剪得到子图，随后使用深度卷积网络在缩放至特定尺寸的子图上提取图片特征，最后使用 SVM 在图片特征上对候选框内容分类，以及后续的检测框坐标回归等任务。RCNN 算法在 Pascal VOC07 目标检测挑战~\citep{Everingham10} 上达到了 $58.5\%$ 平均准确率（mean average precision，下文简称 mAP），但其选取候选框的流程较为耗时，且在每一候选区域内分别提取特征的做法造成了大量重复冗余，因此 RCNN 算法的运行速度较慢（单张图片检测时长约 14 秒）。
+
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=0.6\columnwidth]{Img/Background/spm.pdf}
+  \caption{SPPNet 的算法架构，图片来自~\citet{he2015spatial}}
+  \label{img::background::SPPNet}
+\end{figure}
+
+针对 RCNN 存在的特征提取冗余问题，\citet{he2015spatial} 提出了针对图片的空间金字塔采样操作（spatial pyramid pooling layer），可以在不同尺寸的输入图片或子图上生成等长的特征表示（图~\ref{img::background::SPPNet}）。借助于 SPP 算子，每张图片可以在检测模型训练前一次性完成特征采样，之后检测子区域的特征可从该等长全局特征上生成，从而避免了 RCNN 中重复提取图片特征的缺点。SPPNet 在 Pascal VOC07 上达到了 $59.2\%$ mAP，然而其主要问题是不能在均一的训练流程内同时训练 SPP 层和用于检测输出的全连接层，导致了可能的模型表达能力受限。
+
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=0.7\columnwidth, trim=0 20em 18em 0, clip]{Img/Background/fast_RCNN.pdf}
+  \caption{Fast RCNN 的算法架构，图片来自~\citet{girshick2015fast}}
+  \label{img::background::fast_RCNN}
+\end{figure}
+
+Fast RCNN~\citep{girshick2015fast} 使用深度全卷积网络在输入图片上直接提取全图特征，随后在各 RoI 对应的特征区域使用 RoI pooling 操作提取等长的 RoI 特征（图~\ref{img::background::fast_RCNN}）。由于 RoI pooling 完全可导，加之 Fast RCNN 使用 Multi-task loss 将各任务子网络的训练规整至同一训练框架下，解决了 RCNN 和 SPPNet 算法各阶段参数需要分离训练的问题。Fast RCNN 在 Pascal VOC07 上达到了 $70.0\%$ mAP，但其运行速度仍然受限于 RoI 生成算法。
+
+\begin{figure}[htb]
+  \centering
+  \begin{subfigure}[t]{0.35\columnwidth}
+    \centering
+    \includegraphics[width=\columnwidth]{Img/Background/faster_RCNN.pdf}
+    \caption{Faster RCNN 的算法架构}
+    \label{img::background::faster_rcnn_arch}
+  \end{subfigure}
+  \quad
+  \begin{subfigure}[t]{0.6\columnwidth}
+    \centering
+    \includegraphics[width=\columnwidth, trim=0 0 13em 0, clip]{Img/Background/rpn.pdf}
+    \caption{RPN 模型结构及预定义 anchor boxes}
+    \label{img::background::faster_rcnn_rpn}
+  \end{subfigure}
+  \caption{Faster RCNN 的算法架构~\subref{img::background::faster_rcnn_arch}及 RPN~\subref{img::background::faster_rcnn_rpn}，图片来自~\citet{ren2015faster}}
+  \label{img::background::faster_rcnn}
+\end{figure}
+
+为加快 RoI 候选生成速率，Faster RCNN~\citep{ren2015faster} 提出了 region proposal network （RPN）直接在主干卷积网络的输出特征上生成候选 RoI （图~\ref{img::background::faster_rcnn_rpn}）。具体地，RPN 在卷积特征每一空间位置按照预先定义的一系列不同尺寸和长宽比的锚框（anchor boxes）通过分类和回归子网络，生成一系列包含表示候选框内容为前景目标的\emph{目标性（objectness）}指标的候选 RoI，再将其送入 Faster RCNN 的 RoI pooling 框架中进行后续计算（图~\ref{img::background::faster_rcnn_arch}）。由于 RPN 完全可导，使得 Faster RCNN 成为第一个能够完全端到端训练的二阶目标检测算法。Faster RCNN 在 Pascal VOC07 上达到 $73.2\%$ mAP，在 MS COCO~\citep{lin2014microsoft} 上达到 $21.9\%$ mAP。后续工作 RFCN~\citep{dai2016r}、Light-head RCNN~\citep{li2017light} 等在 Faster RCNN 框架内进一步减少了运算开销。
+
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=0.4\columnwidth]{Img/Background/FPN.pdf}
+  \caption{FPN 的算法架构，图片来自~\citet{lin2017feature}}
+  \label{img::background::FPN}
+\end{figure}
+
+Feature pyramid networks~\citep{lin2017feature} 是对二阶检测算法主干网络特征提取的加强（图~\ref{img::background::FPN}）。一般认为深度卷积网络深层特征空间信息不足而语意信息丰富，浅层特征空间信息精确而语意信息缺乏。FPN 从主干网络不同深度提取特征，并通过上采样操作将深层特征放大叠加至浅层特征中，从而得到同时包含精确空间信息和丰富语意信息的图片特征。FPN 在 MS COCO 上达到了 $36.2\%$ mAP。
+% ------------------------------------------------------------------------------
+%    One-stage detectors
+% ------------------------------------------------------------------------------
+\subsection{一阶段检测算法}
+二阶段检测算法能带来较高的检测精度，且第一阶段的后处理可以在二阶段检测子模型中避免简单负样本过多导致难样本产生的梯度被噪声掩盖的问题。然而二阶段检测算法所需的计算量较大，会影响模型运行的实时性，因此注重模型端到端运行速度的一阶段检测算法应运而生。一阶段检测算法使用同一网络完成候选框分类、回归任务，直接输出最终结果。本节介绍近年来有代表性的一阶段检测算法。
+
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=0.4\columnwidth]{Img/Background/YOLO_bbox.pdf}
+  \caption{YOLOv2 所用的边界框回归算法，图片来自~\citet{redmon2017yolo9000}}
+  \label{img::background::yolo_bbox}
+\end{figure}
+
+YOLO~\citep{redmon2016you} 是第一个使用深度卷积网络的一阶目标检测算法。YOLO 是 you only look once 的缩写，即该算法仅使用单一网络对输入图片进行区域划分，并计算每一区域上检测框的位置和类别（图~\ref{img::background::yolo_bbox}），从而在保证 Pascal VOC07 上 $52.7\%$ mAP 的同时达到了 155 FPS 的运行效率。后续工作~\citet{redmon2017yolo9000, redmon2018yolov3} 进一步改进了 YOLO 的检测准确度和运行效率。
+
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=0.8\columnwidth]{Img/Background/ssd.pdf}
+  \caption{SSD 的算法架构，图片来自~\citet{liu2016ssd}}
+  \label{img::background::ssd}
+\end{figure}
+
+SSD~\citep{liu2016ssd} 是 Single Shot MultiBox Detector 的缩写。SSD 在主干网络不同深度提取不同尺寸的图片特征，并在特征每一位置分别计算与不同尺寸及长宽比的预定义锚框间的回归误差及分类置信度（图~\ref{img::background::ssd}）。由于使用了多尺度特征，其检测准确度相较 YOLO 获得了显著提升。在运行速率达到 59 FPS 同时，能够在 Pascal VOC07 上达到 $76.8\%$ mAP。
+
+\begin{figure}[htb]
+  \centering
+  \begin{subfigure}[t]{0.65\columnwidth}
+    \includegraphics[width=\columnwidth]{Img/Background/retinanet.pdf}
+    \caption{RetinaNet 模型架构}
+    \label{img::background::retina_net}
+  \end{subfigure}
+  \quad
+  \begin{subfigure}[t]{0.3\columnwidth}
+    \includegraphics[width=\columnwidth]{Img/Background/focal_loss.pdf}
+    \caption{RetinaNet 所用的 Focal loss}
+    \label{img::background::focal_loss}
+  \end{subfigure}
+  \caption{RetinaNet~\subref{img::background::retina_net} 及其使用的分类损失函数 Focal loss~\subref{img::background::focal_loss}，图片来自~\citet{lin2017focal}}
+  \label{img::background::retinanet_focalloss}
+\end{figure}
+
+\citet{lin2017focal} 指出一阶段检测器准确度较二阶段检测器低的关键原因是训练过程中存在过多简单负样本，导致参数梯度被大量简单样本产生的噪声掩盖，而二阶段检测器由于 RPN 之后会通过非极大抑制（non-maximum suppression，下文简称 NMS）滤掉大量低置信度样本而不存在此问题。因此 \citet{lin2017focal} 通过减小分类交叉熵损失中简单样本的权重以避免生成过多梯度噪声，这种改进的损失函数即为 focal loss （图~\ref{img::background::focal_loss}）。在此基础上训练的 RetinaNet （图~\ref{img::background::retina_net}）是目前准确度最高的一阶段检测器之一，在 MS COCO 上达到了 $39.1\%$ mAP。
+% ==============================================================================
+%  Efficient Deep Learning
+% ==============================================================================
+\section{高效深度学习}
 TODO
 
 % ==============================================================================
