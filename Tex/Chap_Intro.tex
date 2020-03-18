@@ -22,5 +22,5 @@
 \begin{enumerate}
   \item 本文提出了一种适用于目标检测模型的量化压缩算法 FQN。FQN 可在接近原模型准确度的情况下将模型参数和激活端到端量化至 4-bit 整数，且不包含任何浮点操作，使得模型在部署时仅需整数数值逻辑即可完成推理。FQN 在 4-bit 下目标检测准确度相对损失较领域内其他方法低 $3.84\times$（第~\ref{chap::fqn} 章）；
   \item 本文提出了一种在预训练阶段减少模型量化误差，从而得到量化部署友好的神经网络模型的通用算法框架 GQ-Nets。GQ-Nets 能够将通用模型参数及激活量化至 5-bit $\sim$ 2-bit 整数，训练开销低于其他量化方法，且无需额外的量化感知训练/微调环节。在完全量化和非完全量化场景下，GQ-Nets 物体分类准确度达到或超过领域内其他方法（第~\ref{chap::gq_nets} 章）；
-  \item 本文在 PyTorch 基础上开发了一套用于训练、测试量化神经网络的软件包 \verb|QuantPack|。\verb|QuantPack| 支持不同量化模式和数值精度，可自动完成全精度模型至量化模型的转换和训练，且易于修改和拓展（附录~\ref{chap::quant_pack} ，同时开源至 GitHub：\url{https://github.com/CrazyRundong/quant-pack}）。
+  \item 本文在 PyTorch 基础上开发了一套用于训练、测试量化神经网络的软件包 \verb|QuantPack|。\verb|QuantPack| 支持不同量化模式和数值精度，可自动完成全精度模型至量化模型的转换和训练，且易于修改和拓展（附录~\ref{chap::quant_pack} ，同时在 GitHub 开源：\url{https://github.com/CrazyRundong/quant-pack}）。
 \end{enumerate}
