@@ -7,9 +7,9 @@
 
 本章介绍一种将神经网络量化误差以可微分形式隐式建模，并利用类似模型蒸馏训练的反向蒸馏技术，将该误差模型引入原网络训练过程的训练方法。该方法可平行整合至原模型训练方法中，将模型训练过程引导至同时最小化原损失函数和量化误差的求解点，从而得到适合被量化运行的神经网络模型。我们称使用该方法训练的量化神经网络为 GQ-Nets (Guided Quantization Networks)。
 
-GQ-Nets 使用在相同输入下，量化神经网络和全精度浮点神经网络之间最终输出的不一致性作为量化误差的度量。在分类任务中，该不一致性由各神经网络最后一层输出（即 logits）间的 KL--散度刻画；在检测任务中，则由模型分类子网络输出的 logits 间的 KL--散度，以及回归子网络输出间的 smooth L1-loss \unsure{也许应该使用 L2-loss？} 一同刻画。这类一致性标准虽然没有针对模型参数及量化参数的显式表达式，但通过在量化操作的反向传播过程中引入 STE，其计算过程变得可微分，从而使得量化误差能够在训练过程中被显式地优化。
+GQ-Nets 使用在相同输入下，量化神经网络和全精度浮点神经网络之间最终输出的不一致性作为量化误差的度量。在分类任务中，该不一致性由各神经网络最后一层输出（即 logits）间的 KL--散度刻画；在检测任务中，则由模型分类子网络输出的 logits 间的 KL--散度，以及回归子网络输出间的 L2-loss 一同刻画。这类一致性标准虽然没有针对模型参数及量化参数的显式表达式，但通过在量化操作的反向传播过程中引入 STE，其计算过程变得可微分，从而使得量化误差能够在训练过程中被显式地优化。
 
-在将针对量化误差的优化引入原模型训练过程后，原模型优化问题演化为一阶多目标优化问题，即需要考虑最小化量化误差的梯度是否会与原模型训练梯度冲突。通过在模型训练过程中对这两组梯度间余弦相似度的度量，揭示了这两组梯度在训练的多数过程中近似正交；即对于大部分任务而言，减少模型量化误差这一任务并不与模型原始任务冲突。基于上述观察，本章引入了调和这两组梯度的一系列训练方法，并对其效果进行了分析比较。
+在将针对量化误差的优化引入原模型训练过程后，原模型优化问题演化为多目标优化问题，即需要考虑最小化量化误差的梯度是否会与原模型训练梯度冲突。通过在模型训练过程中对这两组梯度间余弦相似度的度量，揭示了这两组梯度在训练的多数过程中近似正交；即对于大部分任务而言，减少模型量化误差这一任务并不与模型原始任务冲突。基于上述观察，本章引入了调和这两组梯度的一系列训练方法，并对其效果进行了分析比较。
 % ------------------------------------------------------------------------------
 %    Motivation
 % ------------------------------------------------------------------------------
@@ -34,20 +34,19 @@ GQ-Nets 使用在相同输入下，量化神经网络和全精度浮点神经网
 \begin{enumerate}[1.]
   \item 本章提出了 GQ-Nets，一种使用量化神经网络与全精度神经网络间端到端不匹配度作为量化误差建模，并将该误差引入模型预训练阶段，从而直接得到量化友好的神经网络模型的训练方法；
   \item 本章深入分析了 GQ-Nets 在训练阶段的诸多特性，提出并验证了调和多任务训练不同梯度的多个方法；
-  \item 本章在不同任务和大量真实数据集上验证了 GQ-Nets 的有效性，包括在 CIFAR、ImageNet 数据集上的图片分类任务，以及在 MS~COCO \improvement{在 mmdetectin 上补实验} 数据集上的多类别目标检测任务。
+  \item 本章使用 ResNet-\{18, 20, 34, 50\} 和 MobileNet-\{v1, v2\} 等主干模型，在 CIFAR-10、ImageNet 图片分类任务上验证了 GQ-Nets 的有效性。
 \end{enumerate}
 % ==============================================================================
 %  Modeling Quantization Errors
 % ==============================================================================
-\section{量化误差的建模} \label{sec::gq_nets::q_error}
-
 \begin{figure}[htb]
   \centering
   \includegraphics[width=\columnwidth]{GQ_Nets/arch.pdf}
-  \caption{GQ-Nets 的主要结构。其中，……}
+  \caption{GQ-Nets 的主要结构。模型输入 $x_0$ 在前向传播过程中沿蓝色箭头依次通过原模型 $\FpNet$ 和量化模型 $\QuantNet$ 各层，并分别产生最终全精度输出 $x_L$ 和量化输出 $\tilde{x}_L$。随后按照原模型损失函数 $\mathcal{L}_f$ 和本章提出的衡量量化输出和全精度输出间不一致性的损失项 $\mathcal{L}_q$，构造最终损失函数 $\mathcal{L}$。在反向传播过程中，模型权重参数 $\mathcal{W}$ 和量化参数 $\Theta$ 的梯度一并通过链式法则算出。更多细节请参考第~\ref{sec::gq_nets::q_error} 节。}
   \label{img::gq_nets::arch}
 \end{figure}
 
+\section{量化误差的建模} \label{sec::gq_nets::q_error}
 为了能在预训练阶段减小神经网络模型的量化误差，GQ-Nets 将神经网络模型的量化误差构造为：在初始全精度神经网络模型的基础上，使用同一套模型参数\emph{并行地}构建一个量化神经网络模型，将它们在同一输入下的最终输出与全精度模型的对应输出相类比，作为量化误差的衡量指标。GQ-Nets 的主要结构如图~\ref{img::gq_nets::arch} 所示，其中的前向传播（forward pass）部分展示了在预训练阶段对量化误差 $\mathcal{L}_f$ 及模型整体损失函数 $\mathcal{L}$ 的构造，反向传播（backward pass）部分展示了采用整体损失函数 $\mathcal{L}$ 对模型参数做量化感知训练的细节。本节先详细讨论前向传播过程中模型量化误差的构造方式，第~\ref{sec::gq_nets::train} 节讨论该框架的具体优化细节。
 
 在前向传播过程中，GQ-Nets 各部分及其运行流程如下：
@@ -73,7 +72,8 @@ GQ-Nets 使用在相同输入下，量化神经网络和全精度浮点神经网
 %  Method
 % ==============================================================================
 \section{反向蒸馏训练} \label{sec::gq_nets::train}
-\improvement{在这里详细说明为什么叫“反向蒸馏”训练}
+GQ-Nets 的损失函数构造~\eqref{eq::gq_nets::total_loss} 在高层思想上与神经网络的知识蒸馏训练 \citep{hinton2015distilling} 类似：在知识蒸馏中，通过将在目标任务上表现更优异的教师模型的 logits 作为学生模型学习的\emph{软标签}，实现教师模型对于目标任务的“知识”向学生模型的流动；而在 GQ-Nets 中，根据量化函数 $\mathcal{Q}$ 在前向过程中即时生成的量化模型 $\QuantNet$ 拥有在目标任务——模型被量化部署时保持足够准确度——的相关“知识”，而这些知识通过 \eqref{eq::gq_nets::total_loss} 中量化损失项 $\mathcal{L}_q$ 指导模型权重 $\mathcal{W}$ 和量化参数 $\Theta$ 的训练，因此我们也称其为蒸馏训练。然而在知识蒸馏中，目标任务上的“知识”由大模型流向小模型；而在 GQ-Nets 中，目标任务上的“知识”由量化后的小模型 $\QuantNet$ 流向全精度大模型 $\FpNet$，因此称 GQ-Nets 的训练方法为\emph{反向蒸馏训练}。
+
 GQ-Nets 在预训练阶段构造模型量化误差~\eqref{eq::gq_nets::total_loss} 中 $\mathcal{L}_q$ 时，前向传播运算的几乎所有操作算子均可微分，并且模型的所有权重参数 $\mathcal{W}$ 及量化参数 $\Theta$ 均参与了构造。因此，以适当的优化方法最小化~\eqref{eq::gq_nets::total_loss} 即可以得到一套量化友好的模型权重 $\mathcal{W}$ 及与之对应的量化运行时参数 $\Theta$。使用基于梯度的方法优化~\eqref{eq::gq_nets::total_loss} 需要考虑以下问题：
 \begin{enumerate}[1)]
   \item 在训练过程中权衡 $\mathcal{L}_f$ 与 $\mathcal{L}_q$ 间的重要性，防止两者梯度在训练时互相冲突，或训练由某一组梯度完全主导，以确保训练方法能得到在目标任务上足够准确、同时量化后额外误差最小的模型；
@@ -85,16 +85,17 @@ GQ-Nets 在预训练阶段构造模型量化误差~\eqref{eq::gq_nets::total_los
 %    Loss function
 % ------------------------------------------------------------------------------
 \subsection{损失函数设计} \label{sec::gq_nets::loss_func}
-正如在第~\ref{sec::gq_nets::q_error} 节所讨论的，GQ-Nets 损失函数~\eqref{eq::gq_nets::total_loss} 的构造思路是，通过优化原模型损失函数 $\mathcal{L}_f$ 使模型在目标任务上保持高准确度，同时优化量化误差项 $\mathcal{L}_q$ 使模型在量化后不产生明显的输出误差。然而需要注意的是，直接优化 $\mathcal{L}_q$ 会使 $x_L$ 和 $\tilde{x}_L$ 趋向一致，这一过程可能会使浮点输出对应的概率分布 $\sigma(x_L)$ 偏离目标分布 $y$，从而与 $\mathcal{L}_f$ 的优化冲突。
-
-为解决此问题，GQ-Nets 在构造 $\mathcal{L}_q$ 时，将浮点输出对应的概率分布 $\sigma(x_L)$ 看作\emph{常数项}，从而其梯度 $\nabla_{\mathcal{W}, \Theta} \mathcal{L}_q$ 只会通过量化模型的输出 $\tilde{x}_L$ 作用于 $\hat{f}_{\mathcal{W, Q}}$，使量化模型输出对应概率 $\sigma(\tilde{x}_L)$ 趋近于 $\sigma(x_L)$，而不会对 $\sigma(x_L)$ 的准确度产生负面影响。虽然 $\nabla_{\mathcal{W}, \Theta} \mathcal{L}_q$ 最终仍会作用到模型权重参数 $\mathcal{W}$ 上，但上述操作解藕了 $f_{\mathcal{W}}$ 和 $\hat{f}_{\mathcal{W, Q}}$ 的优化。如图~\ref{img::gq_nets::detach_grad_cos} 所示，解藕后 $\nabla_{\mathcal{W}} \mathcal{L}_f$ 和 $\nabla_{\mathcal{W}} \mathcal{L}_f$ 在训练过程中基本保持正交，使模型整体训练更快收敛，且最终产生更准确的模型。
 
 \begin{figure}[htb]
   \centering
   \includegraphics[width=\columnwidth]{GQ_Nets/grad-of-kl-detach/kl_to_ce_angle.pdf}
-  \caption{脱离梯度 $\nabla_{\sigma(x_L)}\mathcal{L}_q$ 前后，最后一层权重参数 $W_L$ 收到的梯度间的余弦夹角（左图），及训练过程中 $\FpNet$ 测试准确度（右图）。}
+  \caption{使用 ResNet-20 主干网络的 GQ-Nets 在 CIFAR-10 数据集上训练过程中，脱离梯度 $\nabla_{\sigma(x_L)}\mathcal{L}_q$ 前后最后一层权重参数 $W_L$ 收到的梯度间的余弦距离（左图），及训练过程中 $\FpNet$ 测试准确度（右图）。脱离梯度前，原模型损失函数产生的梯度 $\nabla_{W_L}\mathcal{L}_f$ 与量化损失项产生的梯度 $\nabla_{W_L}\mathcal{L}_q$ 之间的余弦距离在 $-0.6 \sim -0.4$ 之间，说明此时这两组梯度是相互冲突的（左图黄线）；脱离梯度后，两组梯度间余弦距离非常接近 0，说明此时这两组梯度基本保持正交（左图蓝线）。右图展示的训练过程准确度曲线进一步说明，在 \eqref{eq::gq_nets::total_loss} 中脱离梯度 $\nabla_{\sigma(x_L)}\mathcal{L}_q$ 可以加快 GQ-Nets 模型收敛。}
   \label{img::gq_nets::detach_grad_cos}
 \end{figure}
+
+正如在第~\ref{sec::gq_nets::q_error} 节所讨论的，GQ-Nets 损失函数~\eqref{eq::gq_nets::total_loss} 的构造思路是，通过优化原模型损失函数 $\mathcal{L}_f$ 使模型在目标任务上保持高准确度，同时优化量化误差项 $\mathcal{L}_q$ 使模型在量化后不产生明显的输出误差。然而需要注意的是，直接优化 $\mathcal{L}_q$ 会使 $x_L$ 和 $\tilde{x}_L$ 趋向一致，这一过程可能会使浮点输出对应的概率分布 $\sigma(x_L)$ 偏离目标分布 $y$，从而与 $\mathcal{L}_f$ 的优化冲突。
+
+为解决此问题，GQ-Nets 在构造 $\mathcal{L}_q$ 时，将浮点输出对应的概率分布 $\sigma(x_L)$ 看作\emph{常数项}，从而其梯度 $\nabla_{\mathcal{W}, \Theta} \mathcal{L}_q$ 只会通过量化模型的输出 $\tilde{x}_L$ 作用于 $\hat{f}_{\mathcal{W, Q}}$，使量化模型输出对应概率 $\sigma(\tilde{x}_L)$ 趋近于 $\sigma(x_L)$，而不会对 $\sigma(x_L)$ 的准确度产生负面影响。虽然 $\nabla_{\mathcal{W}, \Theta} \mathcal{L}_q$ 最终仍会作用到模型权重参数 $\mathcal{W}$ 上，但上述操作解藕了 $f_{\mathcal{W}}$ 和 $\hat{f}_{\mathcal{W, Q}}$ 的优化。如图~\ref{img::gq_nets::detach_grad_cos} 所示，解藕后 $\nabla_{\mathcal{W}} \mathcal{L}_f$ 和 $\nabla_{\mathcal{W}} \mathcal{L}_f$ 在训练过程中基本保持正交，使模型整体训练更快收敛，且最终产生更准确的模型。
 
 上述操作反映到图~\ref{img::gq_nets::arch} 中，即 $\mathcal{L}_q$ 在反向传播过程中，其梯度（对应橙色箭头）仅指向量化输出 $\tilde{x}_L$，而不直接影响 $x_L$。这一操作可以在 PyTorch 中使用 \verb|detach| 操作符，或在 TensorFlow 中使用 \verb|stop_gradient| 操作符实现。其数学定义为
 \begin{align}
@@ -112,24 +113,13 @@ GQ-Nets 在预训练阶段构造模型量化误差~\eqref{eq::gq_nets::total_los
 %    Optimization
 % ------------------------------------------------------------------------------
 \subsection{损失函数优化} \label{sec::gq_nets::optimize_loss_func}
-除量化误差建模及整体损失函数构造外，使用~\eqref{eq::gq_nets::total_loss} 生成的梯度优化模型参数 $\{\mathcal{W}, \Theta\}$ 还需要解决两个问题：$\hat{f}_{\mathcal{W, Q}}$ 计算图反向传播时，不可微分算子及其他特殊算子需做相应处理处理；以及模型训练时对 $\mathcal{L}_f$ 和 $\mathcal{L}_q$ 的侧重程度。
-
-在反向传播时，GQ-Nets 使用 STE 直接将梯度“跳过”计算图中的 $\Round{\cdot}$ 等不可微分操作，即
-\begin{align}
-  \diff{y}{\Round{x}} \diff{\Round{x}}{x} &= \diff{y}{\Round{x}}
-\end{align}
-反向传播时的另一类特殊算子，是量化模型 $\hat{f}_{\mathcal{W, Q}}$ 中保留为浮点运行的部分，例如模型的第一层、最后一层等。\footnote{保留浮点操作的量化模型对于实际硬件部署并不友好，讨论此情形主要便于对比其他工作。} 这类层在量化训练时应视为对其量化输入的参数化变换，故其权重参数 $W_i$ 在更新时应只接受由原模型损失函数所传回的梯度 $w_f \nabla_{W_i}\mathcal{L}_f$，而不叠加量化误差函数传回的梯度 $w_q \nabla_{W_i}\mathcal{L}_q$。\improvement{仔细说清楚为什么只接受 $\mathcal{L}_f$ 的梯度}
-
-在 GQ-Nets 训练的不同阶段，损失函数~\eqref{eq::gq_nets::total_loss} 中权重项 $w_f$ 和 $w_q$ 刻画了训练过程中 $\mathcal{L}_f$ 和 $\mathcal{L}_q$ 的相对重要程度。较大的 $w_f$ 会增大由全精度模型损失函数 $\mathcal{L}_f$ 生成的梯度幅度，从而得到准确度较高，却很可能不够量化友好的模型。与之相对，较大的 $w_q$ 会得到量化友好的模型，而其准确度却有可能降低。本章探讨了多种在训练过程中权衡 $w_f$ 和 $w_q$ 的方法。
-
-首先，我们发现用最简单的等值常数权重，即在整个训练过程中 $w_f = w_q = 0.5$ 就可得到优于很多先前方法的结果（见~\ref{sec::gq_nets::exp} 节实验结果）。这可能是因为，由 GQ-Nets 损失函数~\eqref{eq::gq_nets::total_loss} 生成的两组梯度 $w_f \nabla_{\mathcal{W}}\mathcal{L}_f$ 和 $w_q \nabla_{\mathcal{W}, \Theta}\mathcal{L}_q$ 链式传播到 $\mathcal{W}$ 后基本正交而不会相互冲突（见图~\ref{img::gq_nets::detach_grad_cos}）。
 
 \begin{figure}[htb]
   \centering
   \begin{subfigure}[t]{0.45\columnwidth}
     \centering
     \includegraphics[width=\columnwidth]{GQ_Nets/schedule/schedule.pdf}
-    \caption{在训练不同阶段动态调整模型全精度损失项权重 $w_f$ 和量化误差项权重 $w_q$ 的一种策略。在模型训练初始阶段，以及每次学习率下降之后，先不优化量化误差项，之后再缓慢线性增加。}
+    \caption{损失函数权重调整策略及学习率调整策略}
     \label{img::gq_nets::w_fq_schedule}
   \end{subfigure}
   \quad
@@ -139,24 +129,36 @@ GQ-Nets 在预训练阶段构造模型量化误差~\eqref{eq::gq_nets::total_los
     \caption{损失函数权重调整策略 vs. 模型准确度}
     \label{img::gq_nets::schedule_acc}
   \end{subfigure}
-  \caption{GQ-Nets 损失函数各项权重动态调整策略，……}
+  \caption{GQ-Nets 在训练过程中损失函数各项权重 $w_f, w_q$ 动态调整策略与学习率调整策略 \subref{img::gq_nets::w_fq_schedule} 及训练过程模型准确率 \subref{img::gq_nets::schedule_acc} 的对比。原模型损失项在训练全过程中保持激活，即 $w_f = 1$；在模型全精度准确率显著上升时（图~\subref{img::gq_nets::schedule_acc} 中橙色曲线快速上升部分），量化误差项不计入训练误差以确保模型权重 $\mathcal{W}$ 训练稳定；在模型全精度准确率趋于稳定后，再将 $w_q$ 逐步从 $0$ 线性地 warmup 至 $1$，即逐渐引入量化误差的影响。}
   \label{img::gq_nets::schedule}
 \end{figure}
 
-其次，我们根据实验发现，在训练过程中依据特定策略，动态地调整 $w_f$ 和 $w_q$ 能得到准确度更高的量化模型。例如图~\ref{img::gq_nets::w_fq_schedule} 所示的一种策略，在模型训练的整个过程中，$f_{\mathcal{W}}$ 部分训练不作改动，即 $w_f = 1$。同时，在模型训练初始的几轮（即 warmup 阶段，本章使用训练前 $4$ 轮作为 warmup）以及学习率衰减之后的几轮内，由于模型参数分布变化较大、准确度会快速上升，在这些阶段内设置 $w_q = 0$ 以确保量化误差项不干扰训练；在模型训练相对稳定后，再逐步提高 $w_q$ 至 $1$，如图~\ref{img::gq_nets::schedule_acc} 所示。
-\improvement{增加使用 GradNorm 之后的权重调整策略}
+除量化误差建模及整体损失函数构造外，使用~\eqref{eq::gq_nets::total_loss} 生成的梯度优化模型参数 $\{\mathcal{W}, \Theta\}$ 还需要解决两个问题：$\hat{f}_{\mathcal{W, Q}}$ 计算图反向传播时，不可微分算子及其他特殊算子需做相应处理处理；以及模型训练时对 $\mathcal{L}_f$ 和 $\mathcal{L}_q$ 的侧重程度。
+
+在反向传播时，GQ-Nets 使用 STE 直接将梯度“跳过”计算图中的 $\Round{\cdot}$ 等不可微分操作，即
+\begin{align}
+  \diff{y}{\Round{x}} \diff{\Round{x}}{x} &= \diff{y}{\Round{x}}
+\end{align}
+反向传播时的另一类特殊算子，是量化模型 $\hat{f}_{\mathcal{W, Q}}$ 中保留为浮点运行的部分，例如模型的第一层、最后一层等。\footnote{保留浮点操作的量化模型对于实际硬件部署并不友好，讨论此情形主要便于对比其他工作。} 这类层在量化训练时应视为对其量化输入的参数化变换，故其权重参数 $W_i$ 在更新时应只接受由原模型损失函数所传回的梯度 $w_f \nabla_{W_i}\mathcal{L}_f$，而不叠加量化误差函数传回的梯度 $w_q \nabla_{W_i}\mathcal{L}_q$。% \improvement{仔细说清楚为什么只接受 $\mathcal{L}_f$ 的梯度}
+
+在 GQ-Nets 训练的不同阶段，损失函数~\eqref{eq::gq_nets::total_loss} 中权重项 $w_f$ 和 $w_q$ 刻画了训练过程中 $\mathcal{L}_f$ 和 $\mathcal{L}_q$ 的相对重要程度。较大的 $w_f$ 会增大由全精度模型损失函数 $\mathcal{L}_f$ 生成的梯度幅度，从而得到准确度较高，却很可能不够量化友好的模型。与之相对，较大的 $w_q$ 会得到量化友好的模型，而其准确度却有可能降低。本章探讨了多种在训练过程中权衡 $w_f$ 和 $w_q$ 的方法。
+
+首先，我们发现用最简单的等值常数权重，即在整个训练过程中 $w_f = w_q = 0.5$ 就可得到优于很多先前方法的结果（见~\ref{sec::gq_nets::exp} 节实验结果）。这可能是因为，由 GQ-Nets 损失函数~\eqref{eq::gq_nets::total_loss} 生成的两组梯度 $w_f \nabla_{\mathcal{W}}\mathcal{L}_f$ 和 $w_q \nabla_{\mathcal{W}, \Theta}\mathcal{L}_q$ 链式传播到 $\mathcal{W}$ 后基本正交而不会相互冲突（见图~\ref{img::gq_nets::detach_grad_cos}）。
+
+其次，我们根据实验发现，在训练过程中依据特定策略，动态地调整 $w_f$ 和 $w_q$ 能得到准确度更高的量化模型。例如图~\ref{img::gq_nets::w_fq_schedule} 所示的一种策略，在模型训练的整个过程中，$f_{\mathcal{W}}$ 部分训练不作改动，即 $w_f = 1$。同时，在模型训练初始的几轮（即 warmup 阶段，本章使用训练前 $4$ 轮作为 warmup）以及学习率衰减之后的几轮内，由于模型参数分布变化较大、准确度会快速上升，在这些阶段内设置 $w_q = 0$ 以确保量化误差项不干扰训练；在模型训练相对稳定后，再逐步提高 $w_q$ 至 $1$，如图~\ref{img::gq_nets::schedule_acc} 所示。具体地，我们在实验中设置 $w_q$ 在训练学习率 warmup 完毕及学习率衰减后的 4 轮内为 $w_q = 0$，之后在 5 轮内线性地 warmup 至 $w_q = 1$。训练过程中动态调节 $w_{f, q}$ 对 GQ-Nets 准确率的影响详见第~\ref{sec::gq_nets::ablation_study} 节的实验。
 % ------------------------------------------------------------------------------
 %    Multi-domain BN
 % ------------------------------------------------------------------------------
 \subsection{多域批量正则化}
-批量正则化（Batch Normalization，简称 BN）是现代深度神经网络训练中不可或缺的部分。BN 层在训练时通过指数滑动均值（Exponential Moving Average，简称 EMA）统计模型训练时中间各层输出激活的分布信息（各批量激活 $x_{1\ldots L}$ 的均值 $\mu$、方差 $\sigma$），将各激活分布归一化为标准正态分布，从而缓解或消除模型训练时前向传播激活消失、反向传播梯度弥散等问题。在量化神经网络中，一个需要注意的问题是，即使在同一套模型参数 $\{\mathcal{W}, \Theta\}$ 下，全精度模型 $f_{\mathcal{W}}$ 和量化模型 $\hat{f}_{\mathcal{W}, \Theta}$ 的中间激活分布可能很不一样，如图~\ref{img::gq_nets::fp_q_act_dist} 所示。这会导致在 $\FpNet$ 中使用的正则化参数 $\{\mu, \sigma\}$ 无法匹配量化模型 $\QuantNet$ 的激活分布均值 $\hat{\mu}$ 和方差 $\hat{\sigma}$，影响量化模型的训练收敛速率及最终的模型准确度。
 
 \begin{figure}[htb]
   \centering
   \includegraphics[width=0.5\columnwidth]{GQ_Nets/activation/layer2_0_downsample_0.pdf}
-  \caption{全精度模型 $\FpNet$ 和量化模型 $\QuantNet$ 的中间激活分布，……}
+  \caption{使用 ResNet-18 主干网络的 4-bit GQ-Net 卷积层 \texttt{layer2.0.downsample.0} 在 ImageNet 数据集上随机取样的样本输入下，全精度分支输出激活 $x_f$ 和量化分支输出激活 $x_q$ 的分布。$x_{f, q}$ 尚未经过 ReLU 和激活量化函数，因此在 $0 < x$ 区间仍有分布，且 $x_q$ 包含超过 $16$ 个数据点。注意 $x_f$ 和 $x_q$ 的分布均值、方差显著不同，因此 GQ-Nets 使用多域批量正则化，即使用不同的均值、方差统计值分别对 $x_f, x_q$ 进行正则化。}
   \label{img::gq_nets::fp_q_act_dist}
 \end{figure}
+
+批量正则化（Batch Normalization，简称 BN）是现代深度神经网络训练中不可或缺的部分。BN 层在训练时通过指数滑动均值（Exponential Moving Average，简称 EMA）统计模型训练时中间各层输出激活的分布信息（各批量激活 $x_{1\ldots L}$ 的均值 $\mu$、方差 $\sigma$），将各激活分布归一化为标准正态分布，从而缓解或消除模型训练时前向传播激活消失、反向传播梯度弥散等问题。在量化神经网络中，一个需要注意的问题是，即使在同一套模型参数 $\{\mathcal{W}, \Theta\}$ 下，全精度模型 $f_{\mathcal{W}}$ 和量化模型 $\hat{f}_{\mathcal{W}, \Theta}$ 的中间激活分布可能很不一样，如图~\ref{img::gq_nets::fp_q_act_dist} 所示。这会导致在 $\FpNet$ 中使用的正则化参数 $\{\mu, \sigma\}$ 无法匹配量化模型 $\QuantNet$ 的激活分布均值 $\hat{\mu}$ 和方差 $\hat{\sigma}$，影响量化模型的训练收敛速率及最终的模型准确度。
 
 在一般的“预训练——量化感知微调”二段式训练过程中，由于在量化感知微调时模型 BN 层仍会通过 EMA 保持更新，其正则化参数 $\{\mu, \sigma\}$ 会逐渐演化为 $\{\hat{\mu}, \hat{\sigma}\}$，从而解决量化模型的激活分布不匹配问题。然而在 GQ-Nets 的训练过程中，全精度模型 $\FpNet$ 和量化模型 $\QuantNet$ 同时存在且共享参数 $\mathcal{W}$，其中包括 $\{\mu, \sigma\}$，故 GQ-Nets 的批量正则化需要做额外处理。受多域适配（Domain Adaptation）领域的工作（……）启发，GQ-Nets 将全精度模型激活 $x_{1\ldots L}$ 和量化模型激活 $\tilde{x}_{1\ldots L}$ 视为来自不同\emph{域}（\emph{domain}）的采样，从而使用两组分离的正则化参数 $\{\mu, \sigma\}$ 和 $\{\hat{\mu}, \hat{\sigma}\}$ 分别对其进行批量正则化操作。在一般神经网络模型，如卷积神经网络、循环神经网络、Transformer 中，BN 层按照逐通道正则化输入激活，即 $\{\mu, \sigma\}$ 通常为维数 $16\sim 512$ 的浮点向量，故维护另一组正则化参数 $\{\hat{\mu}, \hat{\sigma}\}$ 带来的额外存储开销非常少。
 
@@ -214,7 +216,7 @@ GQ-Nets 在预训练阶段构造模型量化误差~\eqref{eq::gq_nets::total_los
 %    CIFAR
 % ------------------------------------------------------------------------------
 \subsection{CIFAR-10 物体分类实验} \label{sec::gq_nets::cifar10_experiments}
-所有 CIFAR-10 上的模型使用相同的训练配置。训练在一块 NVIDIA RTX 2080 Ti GPU 上进行，训练批量大小为 128，训练持续 200 轮。模型权重参数 $\mathcal{W}$ 和量化参数 $\Theta$ 使用不同的初始化和训练策略。模型权重参数 $\mathcal{W}$ 以 $\NormalDist{0, \sqrt{\frac{2}{n_{\mathrm{out}}}}}$ 方式初始化，其中 $n_{\mathrm{out}}$ 表示当前参数张量的\emph{扇出（fan-out）}。\footnote{例如对于维度为 $c_{\mathrm{in}} \times c_{\mathrm{out}} \times k_H \times k_W$ 的 2D 卷积核，其扇出计为 $n_{\mathrm{out}}=c_{\mathrm{out}} \times k_H \times k_W$。} 随后使用带 Nesterov 动量的 SGD 算法进行优化。其动量设置为 $0.9$，L2 权重衰减设置为 $10^{-4}$，学习率初始化为 $0.1$，并在训练过程第 80 和第 120 轮分别衰减 $0.1\times$。量化参数 $\Theta$ 按照~\ref{sec::gq_nets::general_conf} 节设定初始化，随后使用 Adam~\citep{kingma2014adam} 算法进行优化。优化过程不使用权重衰减，学习率全程设为 $4\times 10^{-4}$，Adam 算法中第一动量和第二动量分别设为 $\beta_1 = 0.9$ 和 $\beta_2 = 0.999$。训练样本首先通过边缘对称补零拓展至 $40\times40$ 像素，之后随机裁剪至 $32\times 32$ 像素，最终再随机水平翻转并分别在 RGB 通道做归一化；测试样本则只对 RGB 通道分别做归一化。
+所有 CIFAR-10 上的模型使用相同的训练配置。训练在一块 NVIDIA RTX 2080 Ti GPU 上进行，训练批量大小为 128，训练持续 200 轮。模型权重参数 $\mathcal{W}$ 和量化参数 $\Theta$ 使用不同的初始化和训练策略。模型权重参数 $\mathcal{W}$ 以 $\NormalDist{0, \sqrt{\frac{2}{n_{\mathrm{out}}}}}$ 方式初始化，其中 $n_{\mathrm{out}}$ 表示当前参数张量的\emph{扇出（fan-out）}。\footnote{例如对于维度为 $c_{\mathrm{in}} \times c_{\mathrm{out}} \times k_{\mathrm{H}} \times k_{\mathrm{W}}$ 的 2D 卷积核，其扇出计为 $n_{\mathrm{out}}=c_{\mathrm{out}} \times k_{\mathrm{H}} \times k_{\mathrm{W}}$。} 随后使用带 Nesterov 动量的 SGD 算法进行优化。其动量设置为 $0.9$，L2 权重衰减设置为 $10^{-4}$，学习率初始化为 $0.1$，并在训练过程第 80 和第 120 轮分别衰减 $0.1\times$。量化参数 $\Theta$ 按照~\ref{sec::gq_nets::general_conf} 节设定初始化，随后使用 Adam~\citep{kingma2014adam} 算法进行优化。优化过程不使用权重衰减，学习率全程设为 $4\times 10^{-4}$，Adam 算法中第一动量和第二动量分别设为 $\beta_1 = 0.9$ 和 $\beta_2 = 0.999$。训练样本首先通过边缘对称补零拓展至 $40\times40$ 像素，之后随机裁剪至 $32\times 32$ 像素，最终再随机水平翻转并分别在 RGB 通道做归一化；测试样本则只对 RGB 通道分别做归一化。
 
 \begin{table}[htb]
   \centering
@@ -334,7 +336,7 @@ GQ-Nets 也可以按照模型不完全量化的方式进行量化训练，即模
 另外需要注意的是，极低数值精度下 GQ-Nets 在较困难的大规模数据集上，会出现较小规模数据集上更明显的准确度损失。例如在 W2/A2 数值精度下对比表~\ref{tab::gq_nets::imgnet} 和表~\ref{tab::gq_nets::cifar_comparison} 上的结果，会发现在 ILSVRC 2012 上训练的 ResNet 系列模型 Top-1 准确度损失在 $-14.17\% \sim -17.32\%$ 之间，而 CIFAR-10 上训练的 ResNet-20 准确度损失为 $-6.78\%$。同时，参数量较少的模型在量化后也会带来更多的准确度损失，例如 ResNet-18 模型量化后的准确率下降在各数值精度下均高于 ResNet-50。
 
 \begin{table}[htb]
-  \caption{Comparison with other strict quantization methods on top-1 and top-5 accuracy for ImageNet. W/A indicates the quantization bitwidths for weights and activations, respectively. 32/32 indicates full-precision models.}
+  \caption{GQ-Nets 与其他完全量化方法在 ILSVRC 2012 物体分类任务上的准确率}
   \label{tab::gq_nets::imgnet_comparison}
   \begin{center}
     \begin{tabular}{l *{7}{c}}
@@ -429,7 +431,7 @@ GQ-Nets 也可以按照模型不完全量化的方式进行量化训练，即模
     \caption{QAT 过程中模型参数量化边界}
     \label{img::gq_nets::weight_bounds}
   \end{subfigure}
-  \caption{ResNet-20 GQ-Nets 模型在 CIFAR-10 数据集上 QAT 过程中模型 \texttt{layer3.2.conv2} 层量化参数收敛情况。}
+  \caption{ResNet-20 GQ-Nets 模型在 CIFAR-10 数据集上 QAT 过程中模型 \texttt{layer3.\-2.\-conv2} 层量化参数收敛情况。}
   \label{img::gq_nets::res20_quant_bounds}
 \end{figure}
 
@@ -437,7 +439,7 @@ GQ-Nets 也可以按照模型不完全量化的方式进行量化训练，即模
 % ------------------------------------------------------------------------------
 %    Ablation
 % ------------------------------------------------------------------------------
-\subsection{模型简化分析}
+\subsection{模型简化分析} \label{sec::gq_nets::ablation_study}
 
 \begin{table}[htb]
   \centering
@@ -471,14 +473,14 @@ GQ-Nets 也可以按照模型不完全量化的方式进行量化训练，即模
 \subsection{其他训练策略} \label{sec::gq_nets::other_training_protocol}
 
 \ctable[
-  caption = 其他训练策略在 CIFAR-10 上的准确度、训练总时长比较。,
+  caption = 使用其他训练策略的 GQ-Nets 在 CIFAR-10 上的准确率和累计训练开销,
   pos = htb,
   label = tab::gq_nets::other_training_protocol,
 ]{l *{5}{c}}{
   \tnote[a]{时间格式：\verb|<小时: 分钟: 秒>|；}
   \tnote[b]{不完全量化，模型输入、第一层和最后一层保留为浮点；}
   \tnote[c]{模型训练在 NVIDIA GTX 1080Ti GPU 上进行；}
-  \tnote[d]{模型训练在 NVIDIA RTX 2080Ti GPU 上进行；}
+  \tnote[d]{模型训练在 NVIDIA RTX 2080Ti GPU 上进行。}
 }{
   \FL
   \multirow{2}{*}{训练策略} & \multicolumn{2}{c}{训练开销} & 数值精度 &\multicolumn{2}{c}{Top-1 准确率} \\
@@ -515,5 +517,4 @@ GQ-Nets 也可以按照模型不完全量化的方式进行量化训练，即模
 %  Conclusion
 % ==============================================================================
 \section{结论}
-TODO
-
+本章提出了 GQ-Nets，一种在预训练阶段直接得到量化友好的神经网络模型的训练算法框架。GQ-Nets 将相同输入下模型量化输出与全精度输出的差异作为模型量化损失，并通过对该量化损失和全精度模型训练损失的仔细平衡在预训练阶段直接得到量化友好模型。GQ-Nets 对模型量化函数没有特殊要求，且不改变原模型训练计算图，具有良好通用性。GQ-Nets 在完全量化场景下量化准确率显著超过领域内最优方法，在训练预算充裕时能在不完全量化场景上达到或超过领域内最优方法。最后，我们也希望 GQ-Nets 提出的算法框架能够为领域外其他神经网络优化算法提供借鉴。

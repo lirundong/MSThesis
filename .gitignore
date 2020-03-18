@@ -23,6 +23,7 @@ Thesis.pdf
 # ignore office temp files
 ~$*.doc*
 ~$*.ppt*
+~$*.pdf
 
 # ignore font files
 *.TTF
