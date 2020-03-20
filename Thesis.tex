@@ -43,6 +43,7 @@
 \usepackage{Style/artracom}% user defined commands
 \usepackage{multirow}
 \usepackage{arydshln}
+\usepackage{minted}
 % additional setup
 \captionsetup{subrefformat=parens}
 %---------------------------------------------------------------------------%
@@ -55,7 +56,8 @@
 %-
 %-> Titlepage information
 %-
-\input{Tex/Frontinfo}%
+\input{Tex/Frontinfo}
+% \input{Tex/Frontinfo_anonymous} % for double-blind review
 \begin{document}
 %-
 %-> Frontmatter: title page, abstract, content list, symbol list, preface
@@ -90,6 +92,7 @@
 \intotoc*{\cleardoublepage}{\bibname}% add link to toc
 \bibliography{Biblio/ref}% bibliography
 \input{Tex/Backmatter}% other information
+% \input{Tex/Backmatter_anonymous}% other information
 \end{document}
 %---------------------------------------------------------------------------%
 

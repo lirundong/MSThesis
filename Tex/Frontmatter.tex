@@ -22,6 +22,8 @@
 
 本文进一步探索了直接训练\emph{针对量化部署友好}的通用神经网络的方法，称为 Guided Quantization Networks (GQ-Nets)。GQ-Nets 通过在预训练过程中引入模型量化误差，使模型在训练后能直接被量化至 5-bit $\sim$ 2-bit 且保持足够准确度，从而不再需要额外的量化感知训练或微调等过程。在不同数值精度的完全量化及不完全量化场景下，GQ-Nets 在 CIFAR-10、ImageNet 数据集的准确度均能达到或超过先前最优方法。
 
+量化神经网络仍然是一个充满着崭新挑战和机遇的研究领域。未来可能的探索方向包括对部署平台计算资源更合理分配、更高效的优化和训练算法，以及将模型量化技术与 AutoML 结合，在不同任务和硬件平台上最大化部署效率。
+
 \keywords{高效深度学习，量化神经网络，目标检测}% 中文关键词
 %-
 %-> 英文摘要
@@ -32,6 +34,8 @@ Quantized neural networks use low-bit integers to represent model weights and ac
 We point out that the key reason for the low accuracy of quantized neural networks in object detection tasks is that there are many \emph{instabilities} in the quantization aware training phase. Quantization functions and training schemes suitable for object detection models are proposed. We refer to this set of quantization functions and training schemes as \emph{Fully Quantized Networks for Object Detection (FQN)}. FQN can quantize the object detection model weights and activations end-to-end to 4-bit integers, and reduce $3.84\times$ relative mAP loss on the MS COCO dataset compared to the state-of-the-art.
 
 We further explore a method of directly training a general-purpose neural network that is \emph{friendly to quantization deployment}, called \emph{Guided Quantization Networks (GQ-Nets)}. GQ-Nets introduce model quantization errors during the pre-training phase so that the model can be directly quantized to 5-bit $\sim$ 2-bit after training and maintain sufficient accuracy, thereby eliminating the need for additional processes such as quantization aware training or fine-tuning. Under the scenarios of fully and partial quantization with different bit-width, the accuracy of GQ-Nets in the CIFAR-10 and ImageNet datasets can reach or exceed the state-of-the-art.
+
+Neural network quantization is still a research area full of new challenges and opportunities. Possible future exploration directions include more reasonable allocation of computing resources on the deployment platform, more efficient optimization and training algorithms, and the combination of neural network quantization with AutoML to maximize deployment efficiency on different tasks and hardware platforms.
 
 \KEYWORDS{Efficient Deep Learning, Quantized Neural Networks, Object Detection}% 英文关键词
 %---------------------------------------------------------------------------%

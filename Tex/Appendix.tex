@@ -2,19 +2,110 @@
 %  QuantPack
 % ==============================================================================
 \chapter{\texttt{QuantPack} 系统设计及实现} \label{chap::quant_pack}
-TODO
+作者在撰写本文过程中，深感量化神经网络领域现有代码库无法满足本文需求：这些代码库或由研究人员为其论文项目开发，因而灵活性足够而功能太弱；或由工业界为生产部署开发，因而功能强大而难以拓展。为了能够在不同任务、模型上验证不同量化算法和训练、部署方式，作者在 PyTorch 基础上开发了 \QP 软件包。
 % ------------------------------------------------------------------------------
 %    Design goals
 % ------------------------------------------------------------------------------
 \section{设计目标}
-TODO
+\QP 在设计时定位偏向学术研究，以方便使用者在不同任务模型上快速实现算法原型并诊断调试为主要目标；同时也能够对接业界标准，使框架产出模型能够被业界其他部署工具读取使用。为实现上述主要目标，作者将 \QP 的具体设计目标按优先级拆分为：
+\begin{enumerate}
+  \item 为软件库中所有量化操作定义统一 API。统一的 API 便于软件前端（模型训练、推理部分）在参数、激活量化时统一调用，也方便软件后端快速实现不同量化算子。该 API 应可指定不同量化方法、量化位宽等参数，并与被量化输入在模型中的角色（输入是参数、激活或是梯度）无关。网络不同部分在不同阶段应可用不同参数调用此 API，以便验证混合精度量化、不完全量化等方法；
+  \item 不修改用户模型代码即可完成全精度模型至量化模型的转换。自动转换便于在不同任务和模型上验证量化压缩算法，且对用户而言更容易接受；
+  \item 提供便捷的诊断工具，便于用户对量化模型的训练、推理过程进行调试、观察。同时为诊断工具设计统一接口，以便用户根据自身需求编写自己的诊断工具；
+  \item 可将训练后模型导出至 onnx 格式。
+\end{enumerate}
 % ------------------------------------------------------------------------------
 %    Architecture
 % ------------------------------------------------------------------------------
 \section{架构及实现}
-TODO
+\paragraph{API 设计}
+\QP 与量化操作相关的 API 主要有两组：量化设置 API 和量化函数 API。
+\begin{enumerate}
+  \item \textbf{量化设置 API} 包含量化方法、量化位宽、量化函数所需的其他参数。在 \QP 中，模型待量化的每一基本单元（例如某层的参数 Tensor）拥有独立的量化设置，以确保支持混合量化方式训练部署。量化设置 API 定义为：
+    \begin{minted}{python}
+class QuantConfig:
+
+    def __init__(self, method, bit_width, lb, ub,
+                 align_zero, prune_to_zero=False):
+        self.method = method
+        self.bit_width = bit_width
+        self.lb = lb
+        self.ub = ub
+        self.align_zero = align_zero
+        self.prune_to_zero = prune_to_zero
+        self.retain_fp = False
+
+        self._enabled = True
+        self._quantizer = _registered_quantizers[self.method]
+        self._manual_bias = None  # experimental
+    
+    def quant(self, enabled=True):
+
+    def fc(self):
+    
+    @property
+    def params(self):
+
+    @property
+    def enabled(self):
+
+    @property
+    def transform(self):
+    \end{minted}
+    量化模型被初始化时，模型每层根据配置文件建立各自的 \verb|QuantConfig|；在模型训练/推理时，上层逻辑通过 \verb|quant| 和 \verb|fc| 方法激活或关闭该量化单元的量化执行，通过 \verb|enabled| 属性查询该量化单元是否处于量化状态；在模型导出时，导出逻辑通过调用 \verb|params| 获取该单元导出至标准 onnx 节点时所需的量化参数。
+
+    在模型运行时，若某一量化单元 \verb|QuantConfig.enabled == True|，则可通过 \verb|transform| 方法获取用于量化该单元的量化函数。在 \verb|transform| 调用中，该单元的量化参数被绑定至下文将讨论的量化函数 API 中，用户获得的实际是一个\emph{偏函数} （partial functor）。在获得此偏函数后，用户代码可以在不知晓量化参数的情况下对输入做量化，例如
+    \begin{minted}{python}
+if module.weight_transform is not None:
+    weight = module.weight_transform(weight)
+    \end{minted}
+    其中 \verb|module.weight_transform| 即是对该层模型参数 \verb|QuantConfig.transform| 属性的绑定。注意若该 \verb|QuantConfig.enabled == False|，则其 \verb|transform| 返回 \verb|None|。
+  
+  \item \textbf{量化函数 API} 定义为：
+    \begin{minted}{python}
+def fake_quant(x: TensorT, 
+               lb: TensorT, 
+               ub: TensorT, 
+               k: int,
+               align_zero: bool = False,
+               prune_lb: Optional[TensorT] = None,
+               prune_ub: Optional[TensorT] = None,
+               method: str = "linear"):
+    \end{minted}
+    在软件的前端部分（模型构建、推理函数等）调用此 API 对模型参数、激活或梯度进行量化；在软件的后端部分，库作者或用户根据此 API 使用 PyTorch 的自动求导系统，或通过 C++/CUDA 手动实现前后向传播并通过 PyTorch C++ API 调用，以实现自己的量化函数。例如，\QP 中提供了由 CUDA 实现的线性量化函数 \verb|LinearQuantFunc|，可将其如此绑定至量化函数 API 中：
+    \begin{minted}{python}
+if method == "linear":
+    quantizer = q_op.LinearQuantFunc.apply
+    qx = quantizer(x, lb, ub, k, align_zero)
+    \end{minted}
+\end{enumerate}
+
+% \paragraph{自动化模型转换}
+% TODO
 % ------------------------------------------------------------------------------
 %    Source code acquisition
 % ------------------------------------------------------------------------------
 \section{源代码获取}
-TODO
+
+\begin{table}[htb]
+  \centering
+  \caption{QuantPack 代码统计}
+  \label{tab::aappendix::cloc}
+  \begin{tabular}{l *{4}{r}}
+    \toprule
+    Language &                   files &        blank &      comment &         code \\
+    \midrule
+    \texttt{YAML} &                         167 &         1487 &         1107 &        11933 \\
+    \texttt{Python} &                        86 &         1504 &          386 &         5965 \\
+    \texttt{CUDA} &                           4 &           58 &            7 &          441 \\
+    \texttt{Bourne Shell} &                   8 &           34 &            0 &          290 \\
+    \texttt{C++} &                            2 &            8 &            0 &           64 \\
+    \texttt{C/C++ Header} &                   2 &            4 &            0 &           24 \\
+    \texttt{Markdown} &                       1 &            6 &            0 &           19 \\
+    \hdashline
+    SUM &                          270 &         3101 &         1500 &        18736 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+由于 \QP 本身代码量已达近 2 万行（在 2020 年 3 月 20 日的 commit \verb|9f39682| 上统计，详见表~\ref{tab::aappendix::cloc}），为节省篇幅不将全部代码在此列出。\QP 已在 GitHub 完全开源，读者可在 \url{https://github.com/CrazyRundong/quant-pack} 获取最新代码。
