@@ -30,11 +30,6 @@ _minted*
 ~$*.ppt*
 ~$*.pdf
 
-# ignore office temp files
-~$*.doc*
-~$*.ppt*
-~$*.pdf
-
 # ignore font files
 *.TTF
 *.otf
