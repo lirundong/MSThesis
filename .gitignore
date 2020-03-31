@@ -19,10 +19,10 @@ _minted*
 *.xdv
 *-converted-to.pdf
 *.thm
+*.lof
 
 # ignore compiled docuemnt within root
-*.pdf
-!shanghaitech.pdf
+/*.pdf
 !shanghaitech_logo.pdf
 
 # ignore office temp files
@@ -39,3 +39,6 @@ Fonts/LICENSE-Source.txt
 # ignore data archeaves
 *.npz
 *.pth
+
+# ignore duplicated files
+* 2.*
