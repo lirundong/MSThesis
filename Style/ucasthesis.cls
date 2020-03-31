@@ -140,7 +140,7 @@
 \ifxetex%
     %\RequirePackage{ulem}% loaded by xeCJKfntef
 \else%
-    \RequirePackage{ulem}%
+    \RequirePackage[normalem]{ulem}%
 \fi
 \newcommand{\ulunify}[1]{\uline{#1}}% unified name
 \newcommand{\ulenhance}[2][1pt]{% enhanced underline

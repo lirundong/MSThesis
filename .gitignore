@@ -17,6 +17,7 @@ _minted*
 *.out
 *.toc
 *.xdv
+*-converted-to.pdf
 
 # ignore compiled docuemnt within root
 Thesis.pdf

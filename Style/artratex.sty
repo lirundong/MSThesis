@@ -32,9 +32,11 @@
 \newif\ifartx@others \artx@othersfalse
 \newcommand{\artxifstreq}{\expandafter\ifstrequal\expandafter}% expansion control
 \artxifstreq{\artxfontset}{windows}{\artx@windowstrue\artx@timestrue}{%
-\artxifstreq{\artxfontset}{mac}{\artx@mactrue\artx@timestrue}{%
-\artxifstreq{\artxfontset}{adobe}{\artx@adobetrue\artx@timestrue}{%
-\artx@otherstrue\artx@timesfalse}}}
+  \artxifstreq{\artxfontset}{mac}{\artx@mactrue\artx@timestrue}{%
+    \artxifstreq{\artxfontset}{adobe}{\artx@adobetrue\artx@timestrue}{%
+      \artx@otherstrue\artx@timesfalse}
+  }
+}
 %-
 %-> LaTeX engine <pdflatex>, <lualatex>, <xelatex>
 %-
