@@ -18,9 +18,12 @@ _minted*
 *.toc
 *.xdv
 *-converted-to.pdf
+*.thm
 
 # ignore compiled docuemnt within root
-Thesis.pdf
+*.pdf
+!shanghaitech.pdf
+!shanghaitech_logo.pdf
 
 # ignore office temp files
 ~$*.doc*
