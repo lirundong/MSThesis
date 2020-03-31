@@ -286,7 +286,7 @@
 \RequirePackage{letltxmacro}
 \RequirePackage{fontspec}[2016/12/27]
 \RequirePackage{caption}
-\RequirePackage{natbib}
+\RequirePackage[authoryear]{gbt7714}
 \RequirePackage[shortlabels, inline]{enumitem}
 \RequirePackage{amsmath}
 \RequirePackage{mathtools}
@@ -325,8 +325,6 @@
 \def\indexname{索引}
 \def\refname{参考文献}
 \def\bibname{参考文献}
-\def\bibetal{等}
-\def\biband{和}
 \def\tablename{表}
 \def\figurename{图}
 % ------------------------------------------------------------------------------
@@ -802,7 +800,7 @@
   \hbox to #1 {\hfill \hspace*{\ulhshift} #2 \hfill}%
 }
 \newcommand\sht@schoollogo{%
-  \includegraphics[width=10.48cm]{shanghaitech_logo.pdf}%
+  \includegraphics[width=10.48cm]{shanghaitech-logo.pdf}%
 }
 \renewcommand{\maketitle}{%
   \ifthenelse{\equal{\sht@degree}{doctor}}{
@@ -1050,12 +1048,9 @@
 % ------------------------------------------------------------------------------
 %   Bibliography
 % ------------------------------------------------------------------------------
-\citestyle{authoryear}
-\bibliographystyle{gbt7714-plain}
 \setlength{\bibsep}{0.0ex plus 0.2ex minus 0.2ex}
-\newcommand{\bibstyle@authoryear}{\bibpunct{(}{)}{;}{a}{,}{,}}
 \renewcommand*{\bibfont}{\small}
-\newcommand{\makebiblio}[1][reference]{%
+\providecommand{\makebiblio}[1][reference]{%
   \intotoc*{\cleardoublepage}{\bibname}%
   \bibliography{#1}%
 }
