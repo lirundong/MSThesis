@@ -255,24 +255,26 @@
 % ------------------------------------------------------------------------------
 %   Class options
 % ------------------------------------------------------------------------------
-\SetupKeyvalOptions{
-  family = sht,
-  prefix = sht@,
-}
-\DeclareBoolOption[false]{anonymous}
-\DeclareDefaultOption{\PassOptionsToClass{\CurrentOption}{ctexbook}}
-\ProcessKeyvalOptions*
-% ------------------------------------------------------------------------------
-%   Load minimum mandatory packages
-% ------------------------------------------------------------------------------
-\LoadClass[
+\PassOptionsToClass{
   UTF8,
   a4paper,
   twoside, 
   openany, 
   zihao = -4, 
-  scheme = plain, 
-]{ctexbook}
+  scheme = plain,
+}{ctexbook}
+\SetupKeyvalOptions{
+  family = sht,
+  prefix = sht@,
+}
+\DeclareBoolOption[false]{anonymous}
+\DeclareBoolOption[false]{print}
+\DeclareDefaultOption{\PassOptionsToClass{\CurrentOption}{ctexbook}}
+\ProcessKeyvalOptions*
+% ------------------------------------------------------------------------------
+%   Load minimum mandatory packages
+% ------------------------------------------------------------------------------
+\LoadClass{ctexbook}
 \RequirePackage{geometry}
 \RequirePackage{calc}
 \RequirePackage{verbatim}
@@ -286,7 +288,7 @@
 \RequirePackage{letltxmacro}
 \RequirePackage{fontspec}[2016/12/27]
 \RequirePackage{caption}
-\RequirePackage[authoryear]{gbt7714}
+\RequirePackage{natbib}
 \RequirePackage[shortlabels, inline]{enumitem}
 \RequirePackage{amsmath}
 \RequirePackage{mathtools}
@@ -296,6 +298,7 @@
   mathbf = sym,
   mathtt = sym,
 ]{unicode-math}
+\RequirePackage[hyperref, table]{xcolor}
 \AtEndPreamble{
   \RequirePackage{hyperref}
   \hypersetup{
@@ -304,11 +307,20 @@
     bookmarksnumbered = true,
     pdftitle = {\sht@title},
     pdfauthor = {\sht@author},
-    colorlinks = true,
-    linkcolor = black,
-    citecolor = blue,
-    urlcolor = blue,
   }
+  \ifsht@print
+    \hypersetup{
+      hidelinks,
+      colorlinks = false,
+    }
+  \else
+    \hypersetup{
+      colorlinks = true,
+      linkcolor = black,
+      citecolor = blue,
+      urlcolor = blue,
+    }
+  \fi
 }
 % ==============================================================================
 % Format Specifications
@@ -327,18 +339,30 @@
 \def\bibname{参考文献}
 \def\tablename{表}
 \def\figurename{图}
+\def\bibetal{等}
+\def\biband{和}
 % ------------------------------------------------------------------------------
 %   Geometry and layouts
 % ------------------------------------------------------------------------------
 \geometry{
-  inner = 3.17cm,
-  outer = 3.17cm,
   top = 2.54cm,
   bottom = 2.54cm,
   headheight = 12pt, % 9bp,
   headsep = 17.5pt, % 2.54cm - 9bp,
   footskip = 2.54cm - 1.75cm,
 }
+\ifsht@print
+  \def\binding@width{0.63cm}
+  \geometry{
+    inner = 3.17cm + \binding@width,
+    outer = 3.17cm - \binding@width,
+  }
+\else
+  \geometry{
+    inner = 3.17cm,
+    outer = 3.17cm,
+  }
+\fi
 \setlength{\parskip}{0.5ex plus 0.25ex minus 0.25ex}
 \setlength{\parindent}{2\ccwd}
 \linespread{1.6}
@@ -500,7 +524,7 @@
 }{
   \ifthenelse{\equal{\sht@fontset}{mac}}{
     \setCJKmainfont[
-           UprightFont = * Light,
+           UprightFont = * Regular,
               BoldFont = * Bold,
             ItalicFont = Kaiti SC Regular,
         BoldItalicFont = Kaiti SC Bold,
@@ -510,7 +534,7 @@
            BoldFont = * Medium,
       ]{Heiti SC}
     \setCJKfamilyfont{zhsong}[
-        UprightFont = * Light,
+        UprightFont = * Regular,
            BoldFont = * Bold,
       ]{Songti SC}
     \setCJKfamilyfont{zhhei}[
@@ -777,6 +801,8 @@
   },
   paragraph = {
     indent = 2\ccwd,
+    beforeskip = {0pt},
+    afterskip = {1\ccwd},
   },
   punct = quanjiao,
   space = auto,
@@ -785,7 +811,20 @@
 % ------------------------------------------------------------------------------
 %   List environments
 % ------------------------------------------------------------------------------
-\setlist{nosep}
+\newcommand{\textbf@with@colon}[1]{\textbf{#1：}}
+\setlist{
+  nosep,
+  labelindent = 2\ccwd,
+  labelwidth = *,
+  labelsep = 0.5\ccwd,
+  leftmargin = 0em,
+  itemindent = *,
+  listparindent = 2\ccwd,
+}
+\setlist[description]{
+  labelsep = 0em,
+  format = \normalfont\textbf@with@colon,
+}
 % ==============================================================================
 % Cover Generation
 % ==============================================================================
@@ -1048,6 +1087,9 @@
 % ------------------------------------------------------------------------------
 %   Bibliography
 % ------------------------------------------------------------------------------
+\providecommand{\bibstyle@authoryear}{\bibpunct{(}{)}{;}{a}{,}{,}}
+\citestyle{authoryear}
+\bibliographystyle{gbt7714-plain}
 \setlength{\bibsep}{0.0ex plus 0.2ex minus 0.2ex}
 \renewcommand*{\bibfont}{\small}
 \providecommand{\makebiblio}[1][reference]{%

@@ -1,6 +1,6 @@
 \documentclass[
   % anonymous,
-  fontset = mac,
+  fontset = noto,
 ]{shtthesis}
 
 \shtsetup{
@@ -33,7 +33,6 @@
 % ------------------------------------------------------------------------------
 %    TODO notes
 % ------------------------------------------------------------------------------
-\usepackage{xcolor}
 \usepackage{xargs}
 \usepackage[
   colorinlistoftodos,
@@ -98,7 +97,62 @@
 \usepackage{subcaption}
 \usepackage{multirow}
 \usepackage{arydshln}
-\usepackage{minted}
+\usepackage{listings}
+\definecolor{shtred}{RGB}{146,46,23}
+\newcommand\prompt{\texttt{\$}}
+\lstdefinestyle{lstStyleBase}{%
+  basicstyle=\small\ttfamily,
+  aboveskip=\medskipamount,
+  belowskip=\medskipamount,
+  lineskip=0pt,
+  boxpos=c,
+  showlines=false,
+  extendedchars=true,
+  upquote=true,
+  tabsize=2,
+  showtabs=false,
+  showspaces=false,
+  showstringspaces=false,
+  numbers=none,
+  linewidth=\linewidth,
+  xleftmargin=4pt,
+  xrightmargin=0pt,
+  resetmargins=false,
+  breaklines=true,
+  breakatwhitespace=false,
+  breakindent=0pt,
+  breakautoindent=true,
+  columns=flexible,
+  keepspaces=true,
+  gobble=0,
+  framesep=3pt,
+  rulesep=1pt,
+  framerule=1pt,
+  backgroundcolor=\color{gray!5},
+  stringstyle=\color{green!40!black!100},
+  keywordstyle=\bfseries\color{blue!50!black},
+  commentstyle=\slshape\color{black!60},
+  escapeinside={`'},
+}
+\lstdefinestyle{lstStyleShell}{%
+  style=lstStyleBase,
+  frame=l,
+  rulecolor=\color{shtred},
+  language=bash}
+\lstdefinestyle{lstStyleLaTeX}{%
+  style=lstStyleBase,
+  frame=l,
+  rulecolor=\color{shtred},
+  language=[LaTeX]TeX}
+\lstdefinestyle{lstStylePython}{%
+  style=lstStyleBase,
+  frame=l,
+  rulecolor=\color{shtred},
+  language=python}
+\lstnewenvironment{latex}{\lstset{style=lstStyleLaTeX}}{}
+\lstnewenvironment{shell}{\lstset{style=lstStyleShell}}{}
+\lstnewenvironment{python}{\lstset{style=lstStylePython}}{}
+
 \captionsetup{subrefformat=parens, font={small,bf}}
 \captionsetup[sub]{font={small,bf}}
 
@@ -158,7 +212,7 @@ Neural network quantization is still a research area full of new challenges and 
 \begin{enumerate}
   \item 本文提出了一种适用于目标检测模型的量化压缩算法 FQN。FQN 可在接近原模型准确度的情况下将模型参数和激活端到端量化至 4-bit 整数，且不包含任何浮点操作，使得模型在部署时仅需整数数值逻辑即可完成推理。FQN 在 4-bit 下目标检测准确度相对损失较领域内其他方法低 $3.84\times$（第~\ref{chap::fqn} 章）；
   \item 本文提出了一种在预训练阶段减少模型量化误差，从而得到量化部署友好的神经网络模型的通用算法框架 GQ-Nets。GQ-Nets 能够将通用模型参数及激活量化至 5-bit $\sim$ 2-bit 整数，且无需额外的量化感知训练/微调环节。在完全量化和非完全量化场景下，GQ-Nets 物体分类准确度达到或超过领域内其他方法（第~\ref{chap::gq_nets} 章）；
-  \item 本文在 PyTorch~\citep{paszke2019pytorch} 基础上开发了一套用于训练、测试量化神经网络的软件包 \verb|QuantPack|。\verb|QuantPack| 支持不同量化模式和数值精度，可自动完成全精度模型至量化模型的转换和训练，且易于修改和拓展（附录~\ref{chap::quant_pack} ，同时在 GitHub 开源：\url{https://github.com/CrazyRundong/quant-pack}）。
+  \item 本文在 PyTorch~\citep{paszke2019pytorch} 基础上开发了一套用于训练、测试量化神经网络的软件包 \verb|QuantPack|。\verb|QuantPack| 支持不同量化模式和数值精度，可自动完成全精度模型至量化模型的转换和训练，且易于修改和拓展（附录~\ref{chap::quant_pack} ，同时在 GitHub 开源：\url{https://github.com/lirundong/quant-pack}）。
 \end{enumerate}
 % ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 %  Background
@@ -1713,16 +1767,16 @@ GQ-Nets 也可以按照模型不完全量化的方式进行量化训练，即模
 本文第~\ref{chap::gq_nets} 章通过相同输入下同一模型量化输出和全精度输出间的差异作为量化误差建模，端到端地考虑了神经网络参数和激活被量化后的误差影响，并据此提出了训练通用的、对量化部署友好的训练算法框架 Guided Quantization Networks (GQ-Nets)。GQ-Nets 可以在模型预训练阶段直接得到量化后几乎不损失准确度的神经网络模型，故不再需要额外的量化感知训练等流程。在不同的量化范式和量化数值精度下，GQ-Nets 可达到或超过先前最优方法的准确度。
 
 量化神经网络仍然是一个充满着崭新挑战和机遇的研究领域。从神经网络的通用量化方法的角度，可能的未来工作方向包括：
-\begin{enumerate}
-  \item \textbf{更有效的计算资源分配}：神经网络模型不同部分对量化误差的敏感性不一致，因此在支持混合数值精度——例如，同时支持 FP16、INT8、INT4 算术操作——的部署平台上，为模型不同部分分配不同量化数值精度将会进一步提高量化神经网络的运行效率；
-  \item \textbf{更高效的优化方法}：量化神经网络的训练过程仍然存在梯度不匹配导致的训练收敛问题，在复杂任务的极低比特量化场景下更为明显。为复杂模型和任务设计 2-bit 或二值化数值精度下的优化方法会极大地促进极低比特量化压缩技术在其他领域的普及。
-\end{enumerate}
+\begin{description}
+  \item[更有效的计算资源分配] 神经网络模型不同部分对量化误差的敏感性不一致，因此在支持混合数值精度——例如，同时支持 FP16、INT8、INT4 算术操作——的部署平台上，为模型不同部分分配不同量化数值精度将会进一步提高量化神经网络的运行效率；
+  \item[更高效的优化方法] 量化神经网络的训练过程仍然存在梯度不匹配导致的训练收敛问题，在复杂任务的极低比特量化场景下更为明显。为复杂模型和任务设计 2-bit 或二值化数值精度下的优化方法会极大地促进极低比特量化压缩技术在其他领域的普及。
+\end{description}
 
 从用于特定任务的专用量化方法的角度，可能的工作方向包括：
-\begin{enumerate}
-  \item \textbf{用于自然语言处理、推荐系统等领域的模型量化技术}：不同于模型体积在 MB 量级的计算机视觉领域模型，部署在服务器端的自然语言处理、推荐系统等领域模型体积可以达 GB 量级。将模型量化技术应用到这些领域将会极大地减轻数据中心的计算和能耗负担；
-  \item \textbf{使用 AutoML 技术自动化模型的量化训练及部署}：随着应用场景和部署平台的扩增，为每一任务单独分析并设计量化算法的开销将高至无法承受。将模型量化技术融入至 AutoML 系统中，将是未来神经网络模型高效训练和部署的主流方向。
-\end{enumerate}
+\begin{description}
+  \item[用于自然语言处理、推荐系统等领域的模型量化技术] 不同于模型体积在 MB 量级的计算机视觉领域模型，部署在服务器端的自然语言处理、推荐系统等领域模型体积可以达 GB 量级。将模型量化技术应用到这些领域将会极大地减轻数据中心的计算和能耗负担；
+  \item[使用 AutoML 技术自动化模型的量化训练及部署] 随着应用场景和部署平台的扩增，为每一任务单独分析并设计量化算法的开销将高至无法承受。将模型量化技术融入至 AutoML 系统中，将是未来神经网络模型高效训练和部署的主流方向。
+\end{description}
 
 \makebiblio[thesis]
 
@@ -1730,7 +1784,7 @@ GQ-Nets 也可以按照模型不完全量化的方式进行量化训练，即模
 % ==============================================================================
 %  QuantPack
 % ==============================================================================
-\chapter{\texttt{QuantPack} 系统设计及实现} \label{chap::quant_pack}
+\chapter{\QP 系统设计及实现} \label{chap::quant_pack}
 作者在撰写本文过程中，深感量化神经网络领域现有代码库无法满足本文需求：这些代码库或由研究人员为其论文项目开发，因而灵活性足够而功能太弱；或由工业界为生产部署开发，因而功能强大而难以拓展。为了能够在不同任务、模型上验证不同量化算法和训练、部署方式，作者在 PyTorch 基础上开发了 \QP 软件包。
 % ------------------------------------------------------------------------------
 %    Design goals
@@ -1749,9 +1803,9 @@ GQ-Nets 也可以按照模型不完全量化的方式进行量化训练，即模
 \section{架构及实现}
 \paragraph{API 设计}
 \QP 与量化操作相关的 API 主要有两组：量化设置 API 和量化函数 API。
-\begin{enumerate}
-  \item \textbf{量化设置 API} 包含量化方法、量化位宽、量化函数所需的其他参数。在 \QP 中，模型待量化的每一基本单元（例如某层的参数 Tensor）拥有独立的量化设置，以确保支持混合量化方式训练部署。量化设置 API 定义为：
-    \begin{minted}{python}
+\begin{description}
+  \item[量化设置 API] 包含量化方法、量化位宽、量化函数所需的其他参数。在 \QP 中，模型待量化的每一基本单元（例如某层的参数 Tensor）拥有独立的量化设置，以确保支持混合量化方式训练部署。量化设置 API 定义为：
+\begin{python}
 class QuantConfig:
 
     def __init__(self, method, bit_width, lb, ub,
@@ -1780,18 +1834,18 @@ class QuantConfig:
 
     @property
     def transform(self):
-    \end{minted}
+\end{python}
     量化模型被初始化时，模型每层根据配置文件建立各自的 \verb|QuantConfig|；在模型训练/推理时，上层逻辑通过 \verb|quant| 和 \verb|fc| 方法激活或关闭该量化单元的量化执行，通过 \verb|enabled| 属性查询该量化单元是否处于量化状态；在模型导出时，导出逻辑通过调用 \verb|params| 获取该单元导出至标准 onnx 节点时所需的量化参数。
 
     在模型运行时，若某一量化单元 \verb|QuantConfig.enabled == True|，则可通过 \verb|transform| 方法获取用于量化该单元的量化函数。在 \verb|transform| 调用中，该单元的量化参数被绑定至下文将讨论的量化函数 API 中，用户获得的实际是一个\emph{偏函数} （partial functor）。在获得此偏函数后，用户代码可以在不知晓量化参数的情况下对输入做量化，例如
-    \begin{minted}{python}
+\begin{python}
 if module.weight_transform is not None:
     weight = module.weight_transform(weight)
-    \end{minted}
+\end{python}
     其中 \verb|module.weight_transform| 即是对该层模型参数 \verb|QuantConfig.transform| 属性的绑定。注意若该 \verb|QuantConfig.enabled == False|，则其 \verb|transform| 返回 \verb|None|。
   
-  \item \textbf{量化函数 API} 定义为：
-    \begin{minted}{python}
+  \item[量化函数 API] 定义为：
+\begin{python}
 def fake_quant(x: TensorT, 
                lb: TensorT, 
                ub: TensorT, 
@@ -1800,14 +1854,14 @@ def fake_quant(x: TensorT,
                prune_lb: Optional[TensorT] = None,
                prune_ub: Optional[TensorT] = None,
                method: str = "linear"):
-    \end{minted}
+\end{python}
     在软件的前端部分（模型构建、推理函数等）调用此 API 对模型参数、激活或梯度进行量化；在软件的后端部分，库作者或用户根据此 API 使用 PyTorch 的自动求导系统，或通过 C++/CUDA 手动实现前后向传播并通过 PyTorch C++ API 调用，以实现自己的量化函数。例如，\QP 中提供了由 CUDA 实现的线性量化函数 \verb|LinearQuantFunc|，可将其如此绑定至量化函数 API 中：
-    \begin{minted}{python}
+\begin{python}
 if method == "linear":
     quantizer = q_op.LinearQuantFunc.apply
     qx = quantizer(x, lb, ub, k, align_zero)
-    \end{minted}
-\end{enumerate}
+\end{python}
+\end{description}
 
 % \paragraph{自动化模型转换}
 % TODO
@@ -1822,22 +1876,22 @@ if method == "linear":
   \label{tab::aappendix::cloc}
   \begin{tabular}{l *{4}{r}}
     \toprule
-    Language &                   files &        blank &      comment &         code \\
+    Language &                   Files &        Blank &      Comment &         Code \\
     \midrule
-    \texttt{YAML} &                         167 &         1487 &         1107 &        11933 \\
-    \texttt{Python} &                        86 &         1504 &          386 &         5965 \\
-    \texttt{CUDA} &                           4 &           58 &            7 &          441 \\
-    \texttt{Bourne Shell} &                   8 &           34 &            0 &          290 \\
-    \texttt{C++} &                            2 &            8 &            0 &           64 \\
-    \texttt{C/C++ Header} &                   2 &            4 &            0 &           24 \\
-    \texttt{Markdown} &                       1 &            6 &            0 &           19 \\
+    \texttt{YAML} &                167 &         1487 &         1107 &        11933 \\
+    \texttt{Python} &               86 &         1504 &          386 &         5965 \\
+    \texttt{CUDA} &                  4 &           58 &            7 &          441 \\
+    \texttt{Bourne Shell} &          8 &           34 &            0 &          290 \\
+    \texttt{C++} &                   2 &            8 &            0 &           64 \\
+    \texttt{C/C++ Header} &          2 &            4 &            0 &           24 \\
+    \texttt{Markdown} &              1 &            6 &            0 &           19 \\
     \hdashline
-    SUM &                          270 &         3101 &         1500 &        18736 \\
+    \textbf{SUM} &                 270 &         3101 &         1500 &        18736 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-由于 \QP 本身代码量已达近 2 万行（在 2020 年 3 月 20 日的 commit \verb|9f39682| 上统计，详见表~\ref{tab::aappendix::cloc}），为节省篇幅不将全部代码在此列出。\QP 已在 GitHub 完全开源，读者可在 \url{https://github.com/CrazyRundong/quant-pack} 获取最新代码。
+由于 \QP 本身代码量已达近 2 万行（在 2020 年 3 月 20 日的 commit \verb|9f39682| 上统计，详见表~\ref{tab::aappendix::cloc}），为节省篇幅不将全部代码在此列出。\QP 已在 GitHub 完全开源，读者可在 \url{https://github.com/lirundong/quant-pack} 获取最新代码。
 
 \backmatter
 \begin{acknowledgement}
@@ -1853,7 +1907,11 @@ if method == "linear":
 \end{acknowledgement}
 
 \begin{resume}
-李润东，云南省楚雄彝族自治州大姚县人，上海科技大学信息科学与技术学院硕士研究生。
+李润东，1995 年 10 月 9 日出生于云南省楚雄彝族自治州大姚县。
+
+2013 年 9 月进入电子科技大学微电子与固体电子学院，集成电路设计与集成系统专业。2017 年 6 月本科毕业并获得工学学士学位。
+
+2017 年 9 月进入上海科技大学信息科学与技术学院，计算机软件与理论专业，师从范睿副教授。攻读工学硕士学位至今。
 \end{resume}
 
 \begin{publications}

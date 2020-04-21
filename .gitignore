@@ -22,8 +22,9 @@ _minted*
 *.lof
 
 # ignore compiled docuemnt within root
-/*.pdf
+*.pdf
 !shanghaitech-logo.pdf
+!thesis.pdf
 
 # ignore office temp files
 ~$*.doc*
@@ -41,4 +42,4 @@ Fonts/LICENSE-Source.txt
 *.pth
 
 # ignore duplicated files
-* 2.*
+* [2-9].*
