@@ -493,7 +493,7 @@
   BoldFont       = *-bold,
   ItalicFont     = *-italic,
   BoldItalicFont = *-bolditalic,
-  Ligatures      = TeX,
+  Ligatures      = CommonOff,
 ]
 % ------------------------------------------------------------------------------
 %   Chinese fonts

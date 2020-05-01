@@ -28,32 +28,32 @@
 %% 
 \GetIdInfo$Id: ctex.dtx 735dfe2 2019-05-29 21:42:29 +0800 Qing Lee <sobenlee@gmail.com> $
   {Mac OS X fonts definition for El Capitan or later version (CTEX)}
-\ProvidesExplFile{ctex-fontset-noto.def}
+\ProvidesExplFile{ctex-fontset-source.def}
   {\ExplFileDate}{2.4.16}{\ExplFileDescription}
 \sys_if_engine_pdftex:TF
-  { \ctex_fontset_error:n { noto } }
+  { \ctex_fontset_error:n { source } }
   {
     \sys_if_engine_uptex:TF
-      { \ctex_fontset_error:n { noto } }
+      { \ctex_fontset_error:n { source } }
       {
         \setCJKmainfont [
-          UprightFont = *~Light ,
-             BoldFont = *~SemiBold ,
+          UprightFont = * ,
+             BoldFont = *~Bold ,
            ItalicFont = FZKai-Z03 ,
-        ] { Noto~Serif~CJK~SC }
+        ] { Source~Han~Serif~SC }
         \setCJKsansfont [
-          UprightFont = *~DemiLight ,
-             BoldFont = *~Medium ,
-        ] { Noto~Sans~CJK~SC }
+          UprightFont = *~Regular ,
+             BoldFont = *~Bold ,
+        ] { Source~Han~Sans~SC }
         \setCJKmonofont { FZFangSong-Z02 }
         \setCJKfamilyfont { zhsong } [
-          UprightFont = *~Light ,
-             BoldFont = *~SemiBold ,
-        ] { Noto~Serif~CJK~SC }
+          UprightFont = * ,
+             BoldFont = *~Bold ,
+        ] { Source~Han~Serif~SC }
         \setCJKfamilyfont { zhhei } [
-          UprightFont = *~DemiLight ,
-             BoldFont = *~Medium ,
-        ] { Noto~Sans~CJK~SC }
+          UprightFont = *~Regular ,
+             BoldFont = *~Bold ,
+        ] { Source~Han~Sans~SC }
         \setCJKfamilyfont { zhfs }   { FZFangSong-Z02 }
         \setCJKfamilyfont { zhkai }  { FZKai-Z03 }
       }
