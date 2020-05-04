@@ -8,11 +8,7 @@
   degree-name = {工学硕士},
   degree-name* = {Master~of~Science~in~Engineering},
   title = {量化神经网络的训练方法及其在目标检测中的应用},
-  title* = {%
-    Training~Quantized~Neural~Networks\\%
-    and\\%
-    Its~Application~in~Object~Detection%
-  },
+  title* = {Training~Quantized~Neural~Networks\\and\\Its~Application~in~Object~Detection},
   keywords = {高效深度学习，量化神经网络，目标检测},
   keywords* = {Efficient~Deep~Learning, Quantized~Neural~Networks, Object~Detection},
   author = {李润东},
@@ -91,20 +87,33 @@
 \usepackage{multirow}
 \usepackage{arydshln}
 \usepackage{minted}
+\usepackage{mdframed}
 \definecolor{ShtRed}{RGB}{146, 46, 23}
 \definecolor{FriendlyBG}{RGB}{240, 240, 240}
 \setminted{
-  bgcolor=FriendlyBG,
-  frame=leftline,
-  framerule=1pt,
   fontsize=\small,
   style=friendly,
   breaklines,
-  breakbytoken=true,
+  breakbytoken,
+}
+\mdfsetup{
+  backgroundcolor=FriendlyBG,
+  linecolor=ShtRed,
+  linewidth=1pt,
+  topline=false,
+  bottomline=false,
+  rightline=false,
+  innertopmargin=2pt,
+  innerbottommargin=2pt,
 }
 \newminted[python]{Python3}{
   rulecolor=ShtRed,
 }
+\newminted[yaml]{YAML}{
+  rulecolor=ShtRed,
+}
+\BeforeBeginEnvironment{minted}{\begin{mdframed}}
+\AfterEndEnvironment{minted}{\end{mdframed}}
 \captionsetup{subrefformat=parens, font={small,bf}}
 \captionsetup[sub]{font={small,bf}}
 
@@ -1759,11 +1768,22 @@ GQ-Nets 也可以按照模型不完全量化的方式进行量化训练，即模
   \item 可将训练后模型导出至 \verb|onnx| 格式，以便通过其他转换工具部署至相应硬件平台。
 \end{enumerate}
 % ------------------------------------------------------------------------------
-%    Architecture
+%    Design and Implementations
 % ------------------------------------------------------------------------------
-\section{详细设计及实现}
+\section{详细设计及实现} \label{sec::appendix::design}
+% ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ 
+%    Minimum modifications
+% ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ 
 \subsection{最小化用户代码修改}
-\QP 首要的设计目标即为尽可能减少用户端代码修改。作为对比，PyTorch 自 v1.3 之后开始试验性地支持量化操作，但其提供的用户接口较为繁琐，用户在将其原有模型转换为量化模型时需要付出较多精力。以 PyTorch 团队发布的 \verb|torchvision| v0.5 软件包为例，量化模型的实现需要使用 \verb|torch.quantization| API 部分地重写模型及其子模块定义，并为每一模型在 \verb|fuse_model| 方法中手动指定 Conv-BN-ReLU 和 Conv-ReLU 的映射规则，以便在 QAT 和量化部署阶段实现算子折叠和融合。例如，MobileNet-v2 在 \verb|torchvision| 中被实现为：\footnote{\url{https://github.com/pytorch/vision/blob/c4f77c2/torchvision/models/quantization/mobilenet.py\#L16-L56}}
+从神经网络训练/部署工具的角度，将神经网络模型从一般浮点格式转换为量化格式需要：
+\begin{enumerate*}[a)]
+  \item 标定模型中待量化数值（例如模型权重、激活等）的范围；
+  \item 指定模型中算子的融合模式（operator fusion），例如第~\ref{sec::fqn::q_bn} 节讨论的 BN-Conv 折叠，以及将 ReLU 折叠至其前一算子中，以减小模型推理时算子启动（kernel launching）的额外开销；
+  \item 完成模型中浮点算子至量化算子的替换，例如在 QAT 过程中，将一般的浮点卷积、矩阵乘法算子替换为为使用离散浮点的伪量化算子；在部署时则替换为使用目标平台上整数数值逻辑进行推理计算的量化算子；
+  \item 在模型的训练/推理代码中做其他修改，例如量化后模型输入数据预处理流程、模型输出后处理的相应修改。
+\end{enumerate*}
+
+\QP 首要的设计目标即为尽可能减少上述过程中用户端代码的修改。作为对比，PyTorch 自 v1.3 之后开始试验性地支持量化操作，但其提供的用户接口较为繁琐，用户在将其原有模型转换为量化模型时需要付出较多精力。以 PyTorch 团队发布的 \verb|torchvision| v0.5 软件包为例，量化模型的实现需要使用 \verb|torch.quantization| API 部分地重写模型及其子模块定义，并为每一模型在 \verb|fuse_model| 方法中手动指定 Conv-BN-ReLU 和 Conv-ReLU 的映射规则，以便在 QAT 和量化部署阶段实现算子折叠和融合。例如，MobileNet-v2 在 \verb|torchvision| 中被实现为：\footnote{\url{https://github.com/pytorch/vision/blob/c4f77c2/torchvision/models/quantization/mobilenet.py\#L16-L56}}
 \begin{python}
 class QuantizableInvertedResidual(InvertedResidual):
     def __init__(self, *args, **kwargs):
@@ -1807,66 +1827,112 @@ class QuantizableMobileNetV2(MobileNetV2):
                 m.fuse_model()
 \end{python}
 
-而在 \QP 中，用户只需导入原有模型，使用 \verb|track_bn_folding_mapping| 函数自动捕捉模型中的 BN-\{Conv, FC\} 映射，并使用 \verb|ParametrizedQuantWrapper| 类将模型包裹起来即可。模型从浮点转换至定点格式所需的额外参数注册、计算方法替换、激活范围校准和算子融合/折叠等操作均被封装至 \verb|ParametrizedQuantWrapper| 类中，模型转换阶段用户可见的代码修改仅有 2 行：\footnote{\url{https://github.com/lirundong/quant-pack/blob/99bb607/quant_pack/apis/train.py\#L51-L52}}
+而在 \QP 中，用户只需导入原有模型，使用 \QP 提供的 \verb|track_bn_folding_mapping| 函数自动捕捉模型中的 BN-\{Conv, FC\} 映射，并使用 \verb|ParametrizedQuantWrapper| 类将模型包裹起来即可。模型从浮点转换至定点格式所需的额外参数注册、计算方法替换、激活范围校准和算子融合/折叠等操作均被封装至 \verb|ParametrizedQuantWrapper| 类中，模型转换阶段用户可见的代码修改仅有 2 行：\footnote{\url{https://github.com/lirundong/quant-pack/blob/99bb607/quant_pack/apis/train.py\#L51-L52}}
 \begin{python}
 bn_folding_mapping = wrapper.track_bn_folding_mapping(model, torch.randn(*cfg.model.input_size))
 model = wrapper.__dict__[cfg.wrapper.name](model, bn_folding_mapping=bn_folding_mapping, **cfg.wrapper.args)
 \end{python}
+% ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ 
+%    Multiple quant/training scheme
+% ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ 
+\subsection{统一量化操作接口及训练策略接口} \label{sec::appendix::internal_interface}
+\QP 的另一设计目标为支持不同的量化操作及训练模式。最理想的使用方式是，用户只需在实验配置文件中指定模型所用的量化参数（例如量化方式、各层量化位宽等）及当前实验的训练流程，不需对代码做任何改动即可快速验证不同的量化和训练方法。例如，第~\ref{chap::gq_nets} 章提出的 GQ-Nets 的量化及训练流程可通过 \verb|YAML| 配置为：\footnote{\url{https://github.com/lirundong/quant-pack/blob/99bb607/configs/GQ_Nets/resnet18_base.yaml}}
+\begin{yaml}
+# quantization config
+wrapper:
+  name: ParametrizedQuantWrapper
+  args:
+    quant_conf:
+      method: linear
+      bit_width: 4
+      align_zero: false
+    do_fold_bn: false
+    fp_layers: null # list with item like: ((module|model).)*conv1
 
-\subsection{\QP 系统架构}
-\definecolor{ClassCyan}{RGB}{62, 134, 160}
-\definecolor{FieldRed}{RGB}{173, 108, 121}
-\definecolor{MethodYellow}{RGB}{170, 130, 63}
-\providecommand{\Class}[1]{%
-  \Circled[fill color=ClassCyan, inner color=white, outer color=ClassCyan]{\small C} #1%
-}
-\providecommand{\Field}[1]{%
-  \Circled[fill color=FieldRed, inner color=white, outer color=FieldRed]{\small F} #1%
-}
-\providecommand{\Method}[1]{%
-  \Circled[fill color=MethodYellow, inner color=white, outer color=MethodYellow]{\small M} #1%
-}
-\begin{forest}
-  for tree={
-    font=\ttfamily,
-    grow'=0,
-    child anchor=west,
-    parent anchor=south,
-    anchor=west,
-    calign=first,
-    edge path={
-      \noexpand\path [draw, \forestoption{edge}]
-      (!u.south west) +(7.5pt,0) |- node[fill,inner sep=1.25pt] {} (.child anchor)\forestoption{edge label};
-    },
-    before typesetting nodes={
-      if n=1
-        {insert before={[,phantom]}}
-        {}
-    },
-    fit=band,
-    before computing xy={l=15pt},
-  }
-[text1
-  [\Class{text1.1}
-    [\Method{text1.1.1}]
-    [\Field{text1.1.2}]
-    [text1.1.3]
-  ]
-  [text1.2
-    [text1.2.1]
-    [text1.2.2]
-  ]
-]
-\end{forest}
-\subsection{API 设计}
-\QP 与量化操作相关的 API 主要有两组：量化设置 API 和量化函数 API。
-\paragraph{量化设置 API}
-包含量化方法、量化位宽、量化函数所需的其他参数。在 \QP 中，模型待量化的每一基本单元（例如某层的参数 Tensor）拥有独立的量化设置，以确保支持混合量化方式训练部署。量化设置 API 定义为：
+# QAT process
+train:
+  optim_groups:
+    - name: &n_q quant_params
+      matches:
+        - .*(_lb|_ub)
+      optim_type: Adam
+      args:
+        lr: !!float 1e-3
+        weight_decay: 0.0
+    - name: &n_w weight_params
+      matches:
+        - .*
+      optim_type: SGD
+      args:
+        lr: 0.025
+        momentum: 0.9
+        weight_decay: !!float 1e-4
+        nesterov: true
+  loss:
+    name: CEKL
+    args: {}
+  metrics:
+    - name: TopK
+      args:
+        logits_names:
+          - fp
+          - quant
+        topk: [1, 5]
+  lr_policies:
+    - name: StepMultiOptim
+      args:
+        gamma: 0.1
+        step: [60, 90]
+        warmup: linear
+        warmup_iters: 2500  # ~4 epochs on b2048 setting
+        warmup_ratio: 0.25
+        scale_by_world_size: true
+        by_epoch: true
+        apply_to:
+          - *n_w
+  qat_policies:
+    - name: EnableQuantAtIntervals
+      args:
+        quant_mode: quant  # ("fp", "quant", "qw_fa", "fw_qa")
+        granularity: epoch  # ("epoch", "iter")
+        always_enable_fp: true
+        intervals: &q_intervals
+          - [25, 60]
+          - [65, 90]
+          - [95, -1]
+        calibrate_cfg:
+          name: calibration
+          type: ActivationCalibration
+          args:
+            percentile: 0.99
+    - name: ConstantVariable
+      args:
+        name: ce_loss_weight
+        value: 1.0
+    - name: IntervalWarmupedVariable
+      args:
+        name: kl_loss_weight
+        value: 1.0
+        warmup_iters: 2500
+        intervals: *q_intervals
+    - name: ConstantVariable
+      args:
+        name: kl_temperature
+        value: 1.0
+    - name: OptimAlterStep
+      args:
+        apply_to:
+          - *n_w
+          - *n_q
+        alter_freq: 1
+        intervals: *q_intervals
+\end{yaml}
+
+其中，模型中不同量化操作均统一参数化为 \verb|quant_conf| ，并在模型自动转换时传递给 \verb|ParametrizedQuantWrapper| 类。\verb|quant_conf| 除上述代码中列出的量化方法（\verb|method|）、量化位宽（\verb|bit_width|）、是否零点对齐（\verb|align_zero|）外，还包含是否将小幅值输入剪枝至 0 （\verb|prune_to_zero|，试验性参数）。这些参数在 \QP 模型转换过程中，封装为 \verb|QuantConfig| 类，自动注册至所有需要量化的子模型中：\footnote{\url{https://github.com/lirundong/quant-pack/blob/99bb607/quant_pack/core/quant/config.py\#L73-L86}}
 \begin{python}
 class QuantConfig:
 
-    def __init__(self, method, bit_width, lb, ub,
-                 align_zero, prune_to_zero=False):
+    def __init__(self, method, bit_width, lb, ub, align_zero, prune_to_zero=False):
         self.method = method
         self.bit_width = bit_width
         self.lb = lb
@@ -1878,51 +1944,238 @@ class QuantConfig:
         self._enabled = True
         self._quantizer = _registered_quantizers[self.method]
         self._manual_bias = None  # experimental
-    
-    def quant(self, enabled=True):
-
-    def fc(self):
-    
-    @property
-    def params(self):
-
-    @property
-    def enabled(self):
-
-    @property
-    def transform(self):
 \end{python}
 
-量化模型被初始化时，模型每层根据配置文件建立各自的 \verb|QuantConfig|；在模型训练/推理时，上层逻辑通过 \verb|quant| 和 \verb|fc| 方法激活或关闭该量化单元的量化执行，通过 \verb|enabled| 属性查询该量化单元是否处于量化状态；在模型导出时，导出逻辑通过调用 \verb|params| 获取该单元导出至标准 onnx 节点时所需的量化参数。
-
-在模型运行时，若某一量化单元 \verb|QuantConfig.enabled == True|，则可通过 \verb|transform| 方法获取用于量化该单元的量化函数。在 \verb|transform| 调用中，该单元的量化参数被绑定至下文将讨论的量化函数 API 中，用户获得的实际是一个\emph{偏函数} （partial functor）。在获得此偏函数后，用户代码可以在不知晓量化参数的情况下对输入做量化，例如
+在用户指定 \verb|quant_conf| 并注册至模型待量化的子模块后，\QP 在运行时根据这些 \verb|QuantConfig| 对模型相应部分进行量化。例如，当 \texttt{method = "linear"} 时，\verb|QuantConfig| 将线性量化函数 \verb|fake_linear_quant| 及相应的量化位宽、量化边界等参数绑定至待量化层的 \verb|transform| 方法：\footnote{\url{https://github.com/lirundong/quant-pack/blob/99bb607/quant_pack/core/quant/config.py\#L94-L122}，代码中 \texttt{self.\_quantizer} 即为由 \texttt{method = "linear"} 查找绑定的 \texttt{fake\_linear\_quant} 方法。}
 \begin{python}
-if module.weight_transform is not None:
-    weight = module.weight_transform(weight)
+@property
+def transform(self):
+    if self._enabled and not self.retain_fp:
+        if self.prune_to_zero:
+            lb, ub = self.lb.item(), self.ub.item()
+            delta = (ub - lb) / (2 ** self.bit_width - 1)
+            if 0. < lb:
+                p_lb = None
+                p_ub = lb - delta / 2
+            elif ub < 0.:
+                p_lb = ub + delta / 2
+                p_ub = None
+            else:
+                q0_minor = lb + math.floor(abs(lb) / delta) * delta
+                q0_plus = lb + math.ceil(abs(lb) / delta) * delta
+                p_lb = q0_minor / 2
+                p_ub = q0_plus / 2
+        else:
+            p_lb = p_ub = None
+        q_f = lambda x: self._quantizer(x, self.lb, self.ub, self.bit_width, self.align_zero, p_lb, p_ub)
+    else:
+        q_f = None
+
+    if self._manual_bias is not None:
+        bias_f = lambda x: x + x.detach().mul_(self._manual_bias)
+    else:
+        bias_f = None
+
+    return combine_optional_callables(q_f, bias_f)
 \end{python}
-其中 \verb|module.weight_transform| 即是对该层模型参数 \verb|QuantConfig.transform| 属性的绑定。注意若该 \verb|QuantConfig.enabled == False|，则其 \verb|transform| 返回 \verb|None|。
-  
-\paragraph{量化函数 API}
-定义为：
+该层在执行 \verb|forward| 方法时调用参数化的 \verb|transform| 将其输入或参数量化。在实际实现中，各层参数、激活的量化方法分别被绑定为 \verb|m.weight_transform| 和 \verb|m.input_transforn|：\footnote{\url{https://github.com/lirundong/quant-pack/blob/99bb607/quant_pack/core/quant/functional.py\#L52-L65}}
 \begin{python}
-def fake_quant(x: TensorT, 
-               lb: TensorT, 
-               ub: TensorT, 
-               k: int,
-               align_zero: bool = False,
-               prune_lb: Optional[TensorT] = None,
-               prune_ub: Optional[TensorT] = None,
-               method: str = "linear"):
-\end{python}
-在软件的前端部分（模型构建、推理函数等）调用此 API 对模型参数、激活或梯度进行量化；在软件的后端部分，库作者或用户根据此 API 使用 PyTorch 的自动求导系统，或通过 C++/CUDA 手动实现前后向传播并通过 PyTorch C++ API 调用，以实现自己的量化函数。例如，\QP 中提供了由 CUDA 实现的线性量化函数 \verb|LinearQuantFunc|，可将其如此绑定至量化函数 API 中：
-\begin{python}
-if method == "linear":
-    quantizer = q_op.LinearQuantFunc.apply
-    qx = quantizer(x, lb, ub, k, align_zero)
+def quant_linear_forward(module, input):
+    if module.input_transform is not None:
+        input = module.input_transform(input)
+    weight, bias = module.weight, module.bias
+    if module.weight_transform is not None:
+        weight = module.weight_transform(weight)
+    elif module.weight_qconf.retain_fp:
+        weight, bias = detach_vars(weight, bias)
+    output = F.linear(input, weight, bias)
+    if getattr(module, "gather_data", None):
+        for name in module.gather_data:
+            if name in locals():
+                module.gather_buffer[name] = locals()[name].detach()
+    return output
 \end{python}
 
-% \paragraph{自动化模型转换}
-% TODO
+在该架构下，实现不同量化方法只需独立定义量化函数的输入--输出映射，并在 \verb|transform| 方法内进行参数化调用。将量化方法注册至 \QP 后，用户仅通过配置文件即可对其进行调用。量化方法可以使用 PyTorch 提供的 Autograd 系列算子实现，也可以通过 C++/CUDA 实现并通过 PyTorch C++ API 绑定至 \QP 中。
+
+上述 \verb|YAML| 文件也展示了 \QP 支持在配置文件中直接调用和组织不同的 QAT 策略。\QP 使用和 \verb|mmcv|\footnote{\url{https://github.com/open-mmlab/mmcv}} 类似的 training hook 机制，将组成训练策略的每一元素抽象为 \emph{hooks}，并且支持不同 hooks 之间的相互组合。例如，第~\ref{sec::gq_nets::optimize_loss_func} 节描述的动态调节 GQ-Nets 损失函数各项权重 $w_f, w_q$ 的训练策略在 \QP 中被抽象为 \verb|IntervalWarmupedVariable| 类。该类实现 \verb|before_train_epoch| 和 \verb|before_train_iter| 两个训练 hooks。根据设置的粒度，它们分别在训练阶段每一 epoch 和 iteration 之前被调用，从而动态地调节训练参数的数值：\footnote{\url{https://github.com/lirundong/quant-pack/blob/99bb607/quant_pack/core/train/qat_policies.py\#L106-L139}}
+\begin{python}
+class IntervalWarmupedVariable(Hook):
+
+    def __init__(self, name, value, warmup_iters, intervals):
+        self.name = name
+        self.target_value = value
+        self.warmup_iters = warmup_iters
+        self.intervals = intervals
+
+    def before_run(self, runner: Runner):
+        if not hasattr(runner, "named_vars"):
+            runner.named_vars = dict()
+
+    def before_train_epoch(self, runner):
+        current_interval = _in_intervals(runner.epoch, self.intervals)
+        if current_interval:
+            iters_per_epoch = len(runner.data_loader)
+            warmup_start_iter = current_interval[0] * iters_per_epoch
+            warmup_done_iter = warmup_start_iter + self.warmup_iters
+        else:
+            warmup_start_iter = warmup_done_iter = None
+        self.warmup_start_iter = warmup_start_iter
+        self.warmup_done_iter = warmup_done_iter
+        self.value_enabled = current_interval is not None
+        self.warmup_delta = self.target_value / self.warmup_iters
+
+    def before_train_iter(self, runner: Runner):
+        if self.value_enabled:
+            if runner.iter < self.warmup_done_iter:
+                gone_iters = runner.iter - self.warmup_start_iter
+                runner.named_vars[self.name] = self.warmup_delta * gone_iters
+            else:
+                runner.named_vars[self.name] = self.target_value
+        else:
+            runner.named_vars[self.name] = 0
+\end{python}
+% ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ 
+%    Diagnosis mechanisem
+% ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ 
+\subsection{诊断及中间变量捕获机制}
+神经网络模型训练往往会面对各种调试困难，例如训练算法不收敛、出现 NaN 数值问题、在特定场景下准确度低等。这些困难在量化神经网络的训练及部署环节中更为明显。由于神经网络模型的训练及部署算法一般不具有确定性，其调试过程通常依赖于频繁考察算法中间变量的数值特征，例如模型参数、激活和梯度随训练过程的分布变化、模型量化前后各层激活的相对损失等。用于确定性算法的断点、打印日志等调试方法难以便捷全面地展示这些信息，故 \QP 在第~\ref{sec::appendix::internal_interface} 节讨论的 hook 机制基础上实现了中间变量捕获及诊断，并且这些操作均可在实验配置文件中调用，从而提高算法开发的效率。
+
+例如，若需要调试模型前向传播过程中模型权重、输出在全精度和量化数值精度下的误差，可以在调试实验中分别使用 \QP 提供的 \verb|SaveAllValue| hook 和 \verb|RelativeErrorPostProcess| hook。\verb|SaveAllValue| 通过正则表达式指定需要匹配的子模型和中间变量的名称，将捕获的变量以 CPU Tensor 的形式存储在 RAM 中。待前向传播结束后，\verb|RelativeErrorPostProcess| 将对应的张量读入，过滤去异常值（如 NaN 等）并计算张量间的相对误差。最后，诊断的数值结果通过 \verb|EnhancedTBLoggerHook| 实时展示在 TensorBoard 上。上述过程可通过 \verb|YAML| 配置，而无需额外修改代码：\footnote{\url{https://github.com/lirundong/quant-pack/blob/99bb607/configs/debug/resnet20_diag_local.yam\#L3-L39}}
+\begin{yaml}
+runtime_hooks:
+  interval: 5
+  hooks:
+    - name: &fp_act fp_activations
+      type: SaveAllValue
+      args:
+        target_cls: (Conv[\d]d|Linear)
+        inject_at_mode: fp
+        need_reg: true
+        var_names:
+          - input
+          - weight
+          - pre_activation
+          - output
+    - name: &quant_act quant_activations
+      type: SaveAllValue
+      args:
+        target_cls: (Conv[\d]d|Linear)
+        inject_at_mode: quant
+        need_reg: true
+        var_names:
+          - input
+          - weight
+          - pre_activation
+          - output
+  post_process:
+    - name: relative_error_vis
+      type: RelativeErrorPostProcess
+      args:
+        apply_to:
+          - *fp_act
+          - *quant_act
+        ce_loss_from: quant
+        abnormal_x_range: [0., 0.1]
+        abnormal_y_range: [10., .inf]
+        ideal_x_range: [5., .inf]
+        ideal_y_range: [-1.0, 1.0]
+\end{yaml}
+% ------------------------------------------------------------------------------
+%    QuantPack architecture
+% ------------------------------------------------------------------------------
+\section{\QP 系统架构}
+\definecolor{ClassCyan}{RGB}{62, 134, 160}
+\definecolor{FieldRed}{RGB}{173, 108, 121}
+\definecolor{MethodYellow}{RGB}{170, 130, 63}
+\providecommand{\Class}[1]{%
+  \Circled[fill color=ClassCyan, inner color=white, outer color=ClassCyan]{\small\ttfamily C} #1%
+}
+\providecommand{\Field}[1]{%
+  \Circled[fill color=FieldRed, inner color=white, outer color=FieldRed]{\small\ttfamily F} #1%
+}
+\providecommand{\Method}[1]{%
+  \Circled[fill color=MethodYellow, inner color=white, outer color=MethodYellow]{\small\ttfamily M} #1%
+}
+\forestset{
+  default preamble={
+    for tree={
+      font=\ttfamily,
+      grow'=0,
+      child anchor=west,
+      parent anchor=south,
+      anchor=west,
+      calign=first,
+      edge path={
+        \noexpand\path [draw, \forestoption{edge}]
+        (!u.south west) +(7.5pt,0) |- node[fill,inner sep=1.25pt] {} (.child anchor)\forestoption{edge label};
+      },
+      before typesetting nodes={
+        if n=1
+          {insert before={[,phantom]}}
+          {}
+      },
+      fit=band,
+      before computing xy={l=15pt},
+    }
+  }
+}
+
+第~\ref{sec::appendix::design} 节讨论的设计原则在 \QP 内主要被实现为 3 个类：用于模型自动转换的 \verb|ParametrizedQuantWrapper| 类，用于实现动态训练策略、调试诊断的 \verb|RuntimeHook| 类，以及用于按照用户配置运行实验的 \verb|MultiOptimRunner| 类。上述各类的结构如下，其中 \Class 表示\emph{类（class）}，\Field 表示类\emph{成员变量（field）}，\Method 表示类\emph{方法（method）}：
+
+\begin{forest}
+[\Class{ParametrizedQuantWrapper}
+  [\Field{module}]
+  [\Field{quant\_mode}]
+  [\Field{w\_quant\_conf}]
+  [\Field{a\_quant\_conf}]
+  [\Field{\_module\_forward}]
+  [\Field{\_quant\_submodules}]
+  [\Field{\_fused\_submodules}]
+  [\Method{batch\_processor}]
+  [\Method{do\_calibration}]
+  [\Method{forward}]
+  [\Method{to\_ddp}]
+  [\Method{to\_torch\_quant}]
+  [\Method{get\_optimizers}]
+  [\Method{fp\_w}]
+  [\Method{fp\_a}]
+  [\Method{quant\_w}]
+  [\Method{quant\_a}]
+  [\Method{\_do\_bn\_folding}]
+  [\Method{\_register\_quant\_params}]
+  [\Method{\_inject\_runtime\_hooks}]
+]
+\end{forest}
+
+\begin{forest}
+[\Class{RuntimeHook}
+  [\Field{intervals}]
+  [\Field{intervals}]
+  [\Field{enable\_reg}]
+  [\Field{named\_builders}]
+  [\Field{named\_handles}]
+  [\Field{is\_ddp}]
+  [\Field{enabled\_at\_this\_iter}]
+  [\Method{before\_run}]
+  [\Method{before\_iter}]
+  [\Method{update\_hooks}]
+  [\Method{add\_builder}]
+  [\Method{remove\_builder}]
+]
+\end{forest}
+
+\begin{forest}
+[\Class{MultiOptimRunner}
+  [\Field{\emph{(Fields inherented from mmcv.Runner)}}]
+  [\Method{init\_optimizer}]
+  [\Method{register\_qat\_hooks}]
+  [\Method{register\_eval\_hooks}]
+  [\Method{register\_logger\_hooks}]
+  [\Method{inject\_runtime\_hooks}]
+  [\Method{\emph{(Other methods inherented from mmcv.Runner)}}]
+]
+\end{forest}
 % ------------------------------------------------------------------------------
 %    Source code acquisition
 % ------------------------------------------------------------------------------
@@ -1959,7 +2212,7 @@ if method == "linear":
 
 其次，我要感谢我在商汤研究院实习期间一起共事的秦红伟博士、王岩博士、梁丰、董镇，以及商汤研究院 ISP \& Codec 团队的其他成员。这段漫长而快乐的实习时光让我看到了人工智能技术对世界的积极影响，坚定了我从事扎实可靠的研究、努力造福社会的志向。
 
-我要感谢同一实验室的研究生同学官加文、林大权、谢志强、方海洲、王惜民、杨飞明、王乐山，他们让我三年的研究生活不再孤单。我还要感谢张松阳、颜世鹏、柏昊立、董鑫、陈上宇，和他们的交流让我了解到了不同研究领域的思想和观点。
+我要感谢同一实验室的研究生同学官加文、林大权、谢志强、方海洲、王惜民、杨飞明、王乐山，他们让我三年的研究生活不再孤单。我还要感谢柏昊立、董鑫、陈上宇、张松阳、颜世鹏，和他们的交流让我了解到了不同研究领域的思想和观点。
 
 最后，本文撰写和完稿于新型冠状病毒肆虐的 2020 年初春。感谢所有不顾安危在一线辛勤付出，让我们得以安心在家科研工作生活的医护人员、党政机关工作人员和各行各业劳动者们。
 \end{acknowledgement}
