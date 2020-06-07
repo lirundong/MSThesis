@@ -21,11 +21,14 @@ _minted*
 *-converted-to.pdf
 *.thm
 *.lof
+*.nav
+*.snm
 
 # ignore compiled docuemnt within root
 *.pdf
 !shanghaitech-logo.pdf
 !thesis.pdf
+!presentation/defense.pdf
 
 # ignore office temp files
 ~$*.doc*
