@@ -1,8 +1,9 @@
-.vscode
+.vscode/**
 .DS_Store
 Tmp
 _minted*
 *.icloud
+!.vscode/settings.json
 
 # ignore latexmk temporary files
 *.gz
@@ -24,6 +25,8 @@ _minted*
 *.nav
 *.snm
 build*/
+*.bcf
+*.xml
 
 # ignore compiled docuemnt within root
 *.pdf

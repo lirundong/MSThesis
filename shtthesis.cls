@@ -274,6 +274,9 @@
   anonymous-str = {
     name = anonymous@str,
     default = {***},
+  },
+  bib-resource = {
+    name = bib@resource,
   }
 }
 % ------------------------------------------------------------------------------
@@ -298,7 +301,16 @@
 \ProcessKeyvalOptions*
 \ifsht@undergraduate
   \PassOptionsToClass{zihao = 5}{ctexbook}
+  \PassOptionsToPackage{style = gb7714-2015}{biblatex}
+\else
+  \PassOptionsToPackage{style = gb7714-2015ay}{biblatex}
 \fi
+\PassOptionsToPackage{
+  natbib = true,
+  backend = biber,
+  gbpub = false,
+  gbcitelocal = chinese,
+}{biblatex}
 % ------------------------------------------------------------------------------
 %   Load minimum mandatory packages
 % ------------------------------------------------------------------------------
@@ -320,7 +332,6 @@
 \RequirePackage{letltxmacro}
 \RequirePackage{fontspec}
 \RequirePackage{caption}
-\RequirePackage{gbt7714}
 \RequirePackage[shortlabels, inline]{enumitem}
 \RequirePackage{amsmath}
 \RequirePackage{mathtools}
@@ -330,8 +341,9 @@
   mathbf = sym,
   mathtt = sym,
 ]{unicode-math}
+\RequirePackage{hyperref}
+\RequirePackage{biblatex}
 \AtEndPreamble{
-  \RequirePackage{hyperref}
   \hypersetup{
     pdfencoding = auto,
     psdextra = true,
@@ -352,6 +364,8 @@
       urlcolor = blue,
     }
   \fi
+  \urlstyle{tt}
+  \addbibresource{\sht@bib@resource}
 }
 % ==============================================================================
 % Format Specifications
@@ -1528,18 +1542,10 @@
 % ------------------------------------------------------------------------------
 %   Bibliography
 % ------------------------------------------------------------------------------
-\ifsht@undergraduate
-  \bibliographystyle{gbt7714-numerical}
-  \citestyle{super}
-\else
-  \bibliographystyle{gbt7714-author-year}
-  \citestyle{authoryear}
-  \renewcommand*{\bibfont}{\small}
-\fi
-\setlength{\bibsep}{0.0ex plus 0.2ex minus 0.2ex}
-\providecommand{\makebiblio}[1][reference]{%
+\providecommand{\makebiblio}{%
+  \renewcommand{\bibfont}{\zihao{5}}
   \intotoc*{\cleardoublepage}{\bibname}%
-  \bibliography{#1}%
+  \printbibliography%
 }
 % ------------------------------------------------------------------------------
 %   Appendix
