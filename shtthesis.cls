@@ -1,10 +1,25 @@
+% shtthesis, an unofficial LaTeX thesis template for ShanghaiTech University.
+% Copyright (C) 2020 Li Rundong <rundong.001@gmail.com>
+%
+% This program is free software: you can redistribute it and/or modify
+% it under the terms of the GNU General Public License as published by
+% the Free Software Foundation, either version 3 of the License, or
+% (at your option) any later version.
+%
+% This program is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU General Public License for more details.
+%
+% You should have received a copy of the GNU General Public License
+% along with this program.  If not, see <https://www.gnu.org/licenses/>
 % ==============================================================================
 % Identification
 % ==============================================================================
 \NeedsTeXFormat{LaTeX2e}
 \ProvidesClass{shtthesis}[%
   2020/06/05 %
-  0.2.0 %
+  v0.2.0 %
   An Unofficial Thesis Template for ShanghaiTech University%
 ]
 \hyphenation{sht-thesis}
@@ -13,6 +28,7 @@
 \newcommand\shtthesis{\textup{\sffamily shtthesis}\xspace}
 \newcommand\ShtThesis{\textup{\sffamily ShtThesis}\xspace}
 \newcommand\version{0.2.0\xspace}
+\newcommand\versiondate{2020/06/05\xspace}
 % ==============================================================================
 % Options and Declarations
 % ==============================================================================
@@ -159,6 +175,14 @@
     default = {Name of author},
     name    = author@en,
   },
+  author-id = {
+    default = {Id of author},
+    name    = author@id,
+  },
+  entrance-year = {
+    default = {Year of entrance},
+    name    = entrance@year,
+  },
   supervisor = {
     default = {导师姓名},
   },
@@ -213,16 +237,6 @@
     % default = {Computer Science and Technology},
     name = discipline@en,
   },
-  date = {
-    default = {\the\year~年~\the\month~月},
-  },
-  date* = {
-    default = {\monthname,~\the\year},
-    name = date@en,
-  },
-  clc,
-  udc,
-  id,
   discipline-level-1 = {
     default = {一级学科名称},
     name    = discipline@level@i,
@@ -239,6 +253,13 @@
     default = {Name of Level-two Discipline},
     name    = discipline@level@ii@en,
   },
+  date = {
+    default = {\the\year~年~\the\month~月},
+  },
+  date* = {
+    default = {\monthname,~\the\year},
+    name = date@en,
+  },
   start-date = {
     name    = start@date,
     default = {\the\year-\two@digits{\month}-\two@digits{\day}},
@@ -247,6 +268,9 @@
     name    = end@date,
     default = {\the\year-\two@digits{\month}-\two@digits{\day}},
   },
+  clc,
+  udc,
+  id,
   anonymous-str = {
     name = anonymous@str,
     default = {***},
@@ -267,14 +291,21 @@
   family = sht,
   prefix = sht@,
 }
+\DeclareBoolOption[false]{undergraduate}
 \DeclareBoolOption[false]{anonymous}
 \DeclareBoolOption[false]{print}
 \DeclareDefaultOption{\PassOptionsToClass{\CurrentOption}{ctexbook}}
 \ProcessKeyvalOptions*
+\ifsht@undergraduate
+  \PassOptionsToClass{zihao = 5}{ctexbook}
+\fi
 % ------------------------------------------------------------------------------
 %   Load minimum mandatory packages
 % ------------------------------------------------------------------------------
 \LoadClass{ctexbook}
+\RequirePackage{expl3}
+\RequirePackage{xparse}
+\RequirePackage[hyperref, table]{xcolor}
 \RequirePackage{geometry}
 \RequirePackage{calc}
 \RequirePackage{verbatim}
@@ -284,11 +315,12 @@
 \RequirePackage{indentfirst}
 \RequirePackage[normalem]{ulem}
 \RequirePackage{fancyhdr}
+\RequirePackage{pageslts}
 \RequirePackage{tocvsec2}
 \RequirePackage{letltxmacro}
-\RequirePackage{fontspec}[2016/12/27]
+\RequirePackage{fontspec}
 \RequirePackage{caption}
-\RequirePackage{natbib}
+\RequirePackage{gbt7714}
 \RequirePackage[shortlabels, inline]{enumitem}
 \RequirePackage{amsmath}
 \RequirePackage{mathtools}
@@ -298,7 +330,6 @@
   mathbf = sym,
   mathtt = sym,
 ]{unicode-math}
-\RequirePackage[hyperref, table]{xcolor}
 \AtEndPreamble{
   \RequirePackage{hyperref}
   \hypersetup{
@@ -339,129 +370,137 @@
 \def\bibname{参考文献}
 \def\tablename{表}
 \def\figurename{图}
-\def\bibetal{等}
-\def\biband{和}
+\definecolor{ShtRed}{RGB}{146,46,23}
+\def\school@logo@missing{校徽文件缺失，请至\href{https://github.com/lirundong/shtthesis/raw/master/shanghaitech-logo.pdf}{项目主页}下载！}
 % ------------------------------------------------------------------------------
 %   Geometry and layouts
 % ------------------------------------------------------------------------------
-\geometry{
-  top = 2.54cm,
-  bottom = 2.54cm,
-  headheight = 12pt, % 9bp,
-  headsep = 17.5pt, % 2.54cm - 9bp,
-  footskip = 2.54cm - 1.75cm,
-}
+\def\binding@width{0.63cm}
+\def\horizontal@margin{3.17cm}
+\def\sht@head@logo@height{1.17cm}
 \ifsht@print
-  \def\binding@width{0.63cm}
   \geometry{
-    inner = 3.17cm + \binding@width,
-    outer = 3.17cm - \binding@width,
+    inner = \horizontal@margin + \binding@width,
+    outer = \horizontal@margin - \binding@width,
   }
 \else
   \geometry{
-    inner = 3.17cm,
-    outer = 3.17cm,
+    inner = \horizontal@margin,
+    outer = \horizontal@margin,
   }
 \fi
 \setlength{\parskip}{0.5ex plus 0.25ex minus 0.25ex}
 \setlength{\parindent}{2\ccwd}
-\linespread{1.6}
+\ifsht@undergraduate
+  \linespread{1.3}
+  \geometry{
+    includeheadfoot,
+    top = 1.5cm,
+    bottom = 1.75cm,
+    headheight = \sht@head@logo@height,
+    headsep = 13.65pt, % 10.5pt (\zihao{-5}) * 1.3 (line spread)
+    footskip = 2.54cm - 1.75cm,
+  }
+\else
+  \linespread{1.6}
+  \geometry{
+    top = 2.54cm,
+    bottom = 2.54cm,
+    headheight = 12pt, % 9bp,
+    headsep = 17.5pt, % 2.54cm - 9bp,
+    footskip = 2.54cm - 1.75cm,
+  }
+\fi
 \raggedbottom
 % ------------------------------------------------------------------------------
 %   Headers and footers
 % ------------------------------------------------------------------------------
+\def\sht@flat@title{\renewcommand\\{ } \@title}
+\def\sht@flat@title@en{\renewcommand\\{ } \sht@title@en}
+\newcommand\sht@head@logo{%
+  \IfFileExists{shanghaitech-logo.pdf}{%
+    \includegraphics[height=\sht@head@logo@height]{shanghaitech-logo.pdf}%
+  }{%
+    \fbox{%
+      \begin{minipage}[b][\sht@head@logo@height][c]{0.4\columnwidth}%
+        \zihao{-5}\bfseries\sffamily\color{ShtRed} \school@logo@missing%
+      \end{minipage}%
+    }%
+  }
+}
 \pagestyle{fancy}
-\fancypagestyle{CenteralPageNumbered}{
+\fancypagestyle{Plain}{}
+\fancypagestyle{RomanNumbered}{
   \fancyhf{}
   \pagenumbering{Roman}
-  \fancyhead[C]{
-    \footnotesize
-    \ifnumodd{\value{page}}{
-      \nouppercase\leftmark
-    }{
-      \nouppercase\@title
-    }
-  }
-  \fancyfoot[C]{
-    \footnotesize
-    \thepage
+  \fancyhead[OC]{\footnotesize\nouppercase\leftmark}
+  \fancyhead[EC]{\footnotesize\nouppercase\sht@flat@title}
+  \fancyfoot[C]{\footnotesize\thepage}
+  \renewcommand{\headrulewidth}{0.8pt}
+  \renewcommand{\footrulewidth}{0pt}
+}
+\fancypagestyle{LRNumbered}{
+  \fancyhf{}
+  \fancyhead[OC]{\footnotesize\nouppercase\leftmark}
+  \fancyhead[EC]{\footnotesize\nouppercase\sht@flat@title}
+  \fancyfoot[OR]{\footnotesize\thepage}
+  \fancyfoot[EL]{\footnotesize\thepage}
+  \renewcommand{\headrulewidth}{0.8pt}
+  \renewcommand{\footrulewidth}{0pt}
+}
+\fancypagestyle{LRNumberedAppendix}{
+  \fancyhf{}
+  \fancyhead[OC]{\footnotesize 附\hspace*{1\ccwd}录}
+  \fancyhead[EC]{\footnotesize\nouppercase\sht@flat@title}
+  \fancyfoot[OR]{\footnotesize\thepage}
+  \fancyfoot[EL]{\footnotesize\thepage}
+  \renewcommand{\headrulewidth}{0.8pt}
+  \renewcommand{\footrulewidth}{0pt}
+}
+\fancypagestyle{RomanNumberedWithLogo}{
+  \fancyhf{}
+  \pagenumbering{Roman}
+  \fancyhead[L]{\sht@head@logo}
+  \fancyhead[R]{\zihao{-5}\sffamily\sht@flat@title}
+  \fancyfoot[C]{\footnotesize\thepage}
+  \renewcommand{\headrulewidth}{0.8pt}
+  \renewcommand{\footrulewidth}{0pt}
+}
+\fancypagestyle{MNNumberedWithLogo}{
+  \fancyhf{}
+  \fancyhead[L]{\sht@head@logo}
+  \fancyhead[R]{\zihao{-5}\sffamily\sht@flat@title}
+  \fancyfoot[C]{%
+    \footnotesize%
+    第~\thepage~页\hspace*{1\ccwd}共~\lastpageref{VeryLastPage}~页%
   }
   \renewcommand{\headrulewidth}{0.8pt}
   \renewcommand{\footrulewidth}{0pt}
 }
-\fancypagestyle{LRPageNumbered}{
-  \fancyhf{}
-  \fancyhead[C]{
-    \footnotesize
-    \ifnumodd{\value{page}}{
-      \nouppercase\leftmark
-    }{
-      \nouppercase\@title
-    }
-  }
-  \fancyfoot[C]{
-    \footnotesize
-    \ifnumodd{\value{page}}{
-      \hspace*{\fill}
-      \thepage
-    }{
-      \thepage
-      \hspace*{\fill}
-    }
-  }
-  \renewcommand{\headrulewidth}{0.8pt}
-  \renewcommand{\footrulewidth}{0pt}
-}
-\fancypagestyle{LRPageNumberedAppendix}{
-  \fancyhf{}
-  \fancyhead[C]{
-    \footnotesize
-    \ifnumodd{\value{page}}{%
-      附\hspace{1\ccwd}录%
-    }{
-      \nouppercase\@title
-    }
-  }
-  \fancyfoot[C]{
-    \footnotesize
-    \ifnumodd{\value{page}}{
-      \hspace*{\fill}
-      \thepage
-    }{
-      \thepage
-      \hspace*{\fill}
-    }
-  }
-  \renewcommand{\headrulewidth}{0.8pt}
-  \renewcommand{\footrulewidth}{0pt}
-}
-\fancypagestyle{LRPageNumberedWithoutHead}{
-  \fancyhf{}
-  \fancyfoot[C]{
-    \footnotesize
-    \ifnumodd{\value{page}}{
-      \hspace*{\fill}
-      \thepage
-    }{
-      \thepage
-      \hspace*{\fill}
-    }
-  }
-  \renewcommand{\headrulewidth}{0pt}
-  \renewcommand{\footrulewidth}{0pt}
-}
-\fancypagestyle{Plain}{}
 \providecommand{\frontmatter}{}
 \LetLtxMacro{\TmpFrontmatter}{\frontmatter}
 \renewcommand{\frontmatter}{%
   \TmpFrontmatter%
-  \pagestyle{CenteralPageNumbered}%
+  \ifsht@undergraduate%
+    \pagestyle{RomanNumberedWithLogo}%
+  \else%
+    \pagestyle{RomanNumbered}%
+  \fi%
 }
 \providecommand{\mainmatter}{}
 \LetLtxMacro{\TmpMainmatter}{\mainmatter}
 \renewcommand{\mainmatter}{%
   \TmpMainmatter%
-  \pagestyle{LRPageNumbered}%
+  \ifsht@undergraduate%
+    \pagestyle{MNNumberedWithLogo}%
+  \else%
+    \pagestyle{LRNumbered}%
+  \fi%
+  \pagenumbering{arabic}%
+  \setcounter{page}{1}%
+}
+\AtBeginDocument{%
+  \pagenumbering{arabic}%
 }
 % ------------------------------------------------------------------------------
 %   Font utilities
@@ -500,14 +539,9 @@
 % ------------------------------------------------------------------------------
 \ifthenelse{\equal{\sht@fontset}{windows}}{
   \def\fake@bold@factor{2.5}
-  \IfFileExists{C:/bootfont.bin}{
-    \def\windows@kaiti{KaiTi_GB2312}
-  }{
-    \def\windows@kaiti{KaiTi}
-  }
   \setCJKmainfont[
       AutoFakeBold = \fake@bold@factor,
-        ItalicFont = \windows@kaiti,
+        ItalicFont = KaiTi,
     ]{SimSun}
   \setCJKsansfont[
       AutoFakeBold = \fake@bold@factor,
@@ -520,7 +554,7 @@
     ]{SimHei}
   \setCJKfamilyfont{zhkai}[
       AutoFakeBold = \fake@bold@factor,
-    ]{\windows@kaiti}
+    ]{KaiTi}
 }{
   \ifthenelse{\equal{\sht@fontset}{mac}}{
     \setCJKmainfont[
@@ -548,26 +582,20 @@
   }{
     \IfFontExistsTF{Source Han Serif SC}{
       \def\unix@songti{Source Han Serif SC}
-      \def\unix@songti@bold{Source Han Serif SC Bold}
     }{
       \IfFontExistsTF{Noto Serif CJK SC}{
         \def\unix@songti{Noto Serif CJK SC}
-        \def\unix@songti@bold{Noto Serif CJK SC Bold}
       }{
-        \def\unix@songti{FandolSong-Regular.otf}
-        \def\unix@songti@bold{FandolSong-Bold.otf}
+        \def\unix@songti{FandolSong}
       }
     }
     \IfFontExistsTF{Source Han Sans SC}{
       \def\unix@heiti{Source Han Sans SC}
-      \def\unix@heiti@bold{Source Han Sans SC Bold}
     }{
       \IfFontExistsTF{Noto Sans CJK SC}{
         \def\unix@heiti{Noto Sans CJK SC}
-        \def\unix@heiti@bold{Noto Sans CJK SC Bold}
       }{
-        \def\unix@heiti{FandolHei-Regular.otf}
-        \def\unix@heiti@bold{FandolHei-Bold.otf}
+        \def\unix@heiti{FandolHei}
       }
     }
     \IfFontExistsTF{STKaiti}{
@@ -576,7 +604,7 @@
       \IfFontExistsTF{Kaiti}{
         \def\unix@kaiti{Kaiti}
       }{
-        \def\unix@kaiti{FandolKai-Regular.otf}
+        \def\unix@kaiti{FandolKai}
       }
     }
     \IfFontExistsTF{STFangsong}{
@@ -585,24 +613,20 @@
       \IfFontExistsTF{FangSong}{
         \def\unix@fangsong{FangSong}
       }{
-        \def\unix@fangsong{FandolFang-Regular.otf}
+        \def\unix@fangsong{FandolFang}
       }
     }
-    \setCJKmainfont[
-          BoldFont = \unix@songti@bold,
-        ItalicFont = \unix@kaiti,
-      ]{\unix@songti}
-    \setCJKsansfont[
-        BoldFont = \unix@heiti@bold,
-      ]{\unix@heiti}
-    \setCJKfamilyfont{zhsong}[
-        BoldFont = \unix@songti@bold,
-      ]{\unix@songti}
-    \setCJKfamilyfont{zhhei}[
-        BoldFont = \unix@heiti@bold,
-      ]{\unix@heiti}
+    \setCJKmainfont[ItalicFont=\unix@kaiti]{\unix@songti}
+    \setCJKsansfont{\unix@heiti}
+    \setCJKmonofont{\unix@fangsong}
+    \setCJKfamilyfont{zhsong}{\unix@songti}
+    \setCJKfamilyfont{zhhei}{\unix@heiti}
     \setCJKfamilyfont{zhkai}{\unix@kaiti}
     \setCJKfamilyfont{zhfs}{\unix@fangsong}
+    \providecommand{\songti}{\CJKfamily{zhsong}}
+    \providecommand{\heiti}{\CJKfamily{zhhei}}
+    \providecommand{\kaishu}{\CJKfamily{zhkai}}
+    \providecommand{\fangsong}{\CJKfamily{zhfs}}
   }
 }
 % ------------------------------------------------------------------------------
@@ -640,9 +664,12 @@
   \renewcommand\checkmark{\ensuremath{✓}}%
 }
 \allowdisplaybreaks[4]
-\newtagform{dots}{\ldots\ (}{)}
-\usetagform{dots}
-\renewcommand{\eqref}[1]{\textup{(\ref{#1})}}
+\ifsht@undergraduate
+\else
+  \newtagform{dots}{\ldots\ (}{)}
+  \usetagform{dots}
+  \renewcommand{\eqref}[1]{\textup{(\ref{#1})}}
+\fi
 % ------------------------------------------------------------------------------
 %   Math fonts
 % ------------------------------------------------------------------------------
@@ -733,6 +760,15 @@
   \markboth{\MakeUppercase{#3}}{}%
 }
 \newcommand{\intobmk}{\@ifstar{\intobmkstar}{\intobmknostar}}
+% \cleardoublepage only works on graduate or undergraduate print mode
+\LetLtxMacro{\OriginCleardoublepage}{\cleardoublepage}
+\renewcommand{\cleardoublepage}{%
+  \ifthenelse{\boolean{sht@undergraduate} \AND \NOT\boolean{sht@print}}{%
+    \relax\clearpage%
+  }{%
+    \OriginCleardoublepage%
+  }%
+}
 % ------------------------------------------------------------------------------
 %   Table of contents, figures and tables
 % ------------------------------------------------------------------------------
@@ -740,10 +776,22 @@
 \captionsetup{
   format = plain,
   hangindent = 2.0em,
-  skip = 8pt,
   labelsep = quad,
   font = {wuhaocuti},
 }
+\ifsht@undergraduate
+  \captionsetup{
+    skip = 6pt,
+  }
+  \def\sht@toc@chapter@fmt{\zihao{5}\rmfamily}
+  \def\sht@toc@section@fmt{\zihao{5}\rmfamily}
+\else
+  \captionsetup{
+    skip = 8pt,
+  }
+  \def\sht@toc@chapter@fmt{\zihao{4}\heiti}
+  \def\sht@toc@section@fmt{\zihao{-4}\heiti}
+\fi
 \def\@dotsep{1.5mu}
 \def\@pnumwidth{2em}
 \def\@tocrmarg{2em}
@@ -755,7 +803,7 @@
     {\leftskip #2\relax \rightskip \@tocrmarg \parfillskip -\rightskip
     \parindent #2\relax\@afterindenttrue
     \interlinepenalty\@M
-    \leavevmode \zihao{-4}\heiti
+    \leavevmode \sht@toc@section@fmt
     \@tempdima #3\relax
     \advance\leftskip \@tempdima \null\nobreak\hskip -\leftskip
     {#4}\nobreak
@@ -775,7 +823,7 @@
       \parindent \z@ \rightskip \@pnumwidth
       \parfillskip -\@pnumwidth
       {\leavevmode
-      \zihao{4}\heiti #1
+      \sht@toc@chapter@fmt #1
       \leaders\hbox{$\m@th\mkern \@dotsep \cdot\mkern \@dotsep$}
       \hfil \hb@xt@\@pnumwidth{\hss #2}}\par
       \nobreak
@@ -788,12 +836,15 @@
 \renewcommand*{\l@chapter}[2]{
   \ifnum \c@tocdepth >\m@ne
     \addpenalty{-\@highpenalty}%
-    \vskip \@chaptervspace \@plus\p@
+    \ifsht@undergraduate%
+    \else%
+      \vskip \@chaptervspace \@plus\p@%
+    \fi%
     \setlength\@tempdima{1.5em}%
     \begingroup
       \parindent \z@ \rightskip \@pnumwidth
       \parfillskip -\@pnumwidth
-      \leavevmode \zihao{4}\heiti
+      \leavevmode \sht@toc@chapter@fmt
       \advance\leftskip\@tempdima
       \hskip -\leftskip
       #1\nobreak
@@ -817,10 +868,13 @@
   \linespread{1.2}%
   \intobmk*{\cleardoublepage}{\contentsname}%
   \tableofcontents%
-  \intobmk*{\cleardoublepage}{\listfigurename}%
-  \listoffigures%
-  \intobmk*{\cleardoublepage}{\listtablename}%
-  \listoftables%
+  \ifsht@undergraduate%
+  \else%
+    \intobmk*{\cleardoublepage}{\listfigurename}%
+    \listoffigures%
+    \intobmk*{\cleardoublepage}{\listtablename}%
+    \listoftables%
+  \fi%
   \endgroup%
 }
 % ------------------------------------------------------------------------------
@@ -834,7 +888,7 @@
     titleformat = {},
     name = {第, 章},
     number = \arabic{chapter},
-    aftername = \hspace{1\ccwd},
+    aftername = \hspace{0.75\ccwd},
     beforeskip = {7pt},
     afterskip = {18pt},
     pagestyle = Plain,
@@ -844,7 +898,7 @@
     nameformat = {},
     numberformat = \rmfamily,
     titleformat = {},
-    aftername = \hspace{1\ccwd},
+    aftername = \hspace{0.75\ccwd},
     beforeskip = {24pt},
     afterskip = {6pt},
   },
@@ -853,19 +907,41 @@
     nameformat = {},
     numberformat = \rmfamily,
     titleformat = {},
-    aftername = \hspace{1\ccwd},
+    aftername = \hspace{0.75\ccwd},
     beforeskip = {12pt},
     afterskip = {6pt},
   },
   paragraph = {
     indent = 2\ccwd,
     beforeskip = {0pt},
-    afterskip = {1\ccwd},
+    afterskip = {0.75\ccwd},
   },
   punct = quanjiao,
   space = auto,
   autoindent = true,
 }
+\ifsht@undergraduate
+  \newlength{\sht@section@indent}
+  \setlength{\sht@section@indent}{2\ccwd}
+  \ctexset{
+    chapter = {
+      format = \bfseries\sffamily\zihao{3}\linespread{1.0}\centering,
+      number = \chinese{chapter},
+      numberformat = {},
+    },
+    section = {
+      format = \sffamily\zihao{4}\linespread{1.0}\raggedright,
+      numberformat = {},
+      indent = \sht@section@indent,
+      beforeskip = {18pt},
+    },
+    subsection = {
+      format = \rmfamily\zihao{-4}\linespread{1.0}\raggedright,
+      numberformat = {},
+      indent = \sht@section@indent,
+    }
+  }
+\fi
 % ------------------------------------------------------------------------------
 %   List environments
 % ------------------------------------------------------------------------------
@@ -886,33 +962,92 @@
 % ==============================================================================
 % Cover Generation
 % ==============================================================================
-\def\ulhshift{-4em}
-\newcommand{\ulunify}[1]{\uline{#1}}
-\newcommand{\ulenhance}[2][1pt]{%
+\def\ubox@right@shift{0.5\ccwd}
+\def\content@left@shift{2.75\ccwd}
+\def\cover@tab@entry@width{350pt}
+\def\cover@tab@last@entry@width{\cover@tab@entry@width - 2\ccwd - 0.5\ccwd}
+\def\cover@tab@uline@thick{1.2pt}
+\ExplSyntaxOn
+\ProvideDocumentCommand{\shifted@uline}{%
+    O{\cover@tab@uline@thick} %
+    O{\ubox@right@shift} %
+    m}{%
   \def\ULthickness{#1}%
   \setlength{\ULdepth}{0.3em}%
-  \expandafter\ulunify\expandafter{#2}%
+  \hspace*{#2}%
+  \uline{#3}%
 }
-\newcommand{\ulextend}[2][350pt]{%
-  \hbox to #1 {\hfill \hspace*{\ulhshift} #2 \hfill}%
+\ProvideDocumentCommand{\shifted@box}{%
+    O{\cover@tab@entry@width} %
+    O{\content@left@shift} %
+    m}{%
+  \makebox[#1][c]{\hspace*{-#2} #3 }%
 }
+\ProvideDocumentCommand{\sht@lines@to@tab}{%
+    O{\cover@tab@uline@thick} %
+    O{\cover@tab@entry@width} %
+    O{\content@left@shift} %
+    m}{%
+  % convert lines into table lines, adapted from `ucasthesis'
+  \seq_set_split:NnV \l_tmpa_seq {\\} {#4}
+  \clist_set_from_seq:NN \l_tmpa_clist \l_tmpa_seq
+  \clist_clear:N \l_tmpb_clist
+  \clist_map_inline:Nn \l_tmpa_clist
+    {%
+      \clist_put_right:Nn \l_tmpb_clist 
+        { \shifted@uline[#1]{\shifted@box[#2][#3]{##1}} }
+    }
+  \clist_use:Nn \l_tmpb_clist { \\ & }
+}
+\ExplSyntaxOff
 \newcommand\sht@schoollogo{%
-  \includegraphics[width=10.48cm]{shanghaitech-logo.pdf}%
+  \IfFileExists{shanghaitech-logo.pdf}{%
+    \includegraphics[width=10.48cm]{shanghaitech-logo.pdf}%
+  }{%
+    \begin{center}%
+      \fbox{%
+        \begin{minipage}[t][2.79cm][c]{10.48cm}%
+          \centering\bfseries\color{ShtRed} \school@logo@missing%
+        \end{minipage}%
+      }%
+    \end{center}%
+  }%
+}
+\newcommand\sht@schoollogo@undergraduate{%
+  \noindent%
+  \IfFileExists{shanghaitech-logo.pdf}{%
+    \includegraphics[width=5.39cm]{shanghaitech-logo.pdf}%
+  }{%
+    \fbox{%
+      \begin{minipage}[t][1.45cm][c]{0.75\columnwidth}%
+        \bfseries\color{ShtRed} \school@logo@missing%
+      \end{minipage}%
+    }%
+  }%
 }
 \renewcommand{\maketitle}{%
-  \ifthenelse{\equal{\sht@degree}{doctor}}{
-    \sht@maketitle@graduate{博士}
-    \sht@maketitle@graduate@en{dissertation}
-  }{
-    \ifthenelse{\equal{\sht@degree}{master}}{
-      \sht@maketitle@graduate{硕士}
-      \sht@maketitle@graduate@en{thesis}
+  \ifsht@undergraduate
+    \sht@maketitle@undergraduate
+    \sht@maketitle@undergraduate@en
+  \else
+    \ifthenelse{\equal{\sht@degree}{doctor}}{
+      \sht@maketitle@graduate{博士}
+      \sht@maketitle@graduate@en{dissertation}
     }{
-      \sht@error{Degree type `\sht@degree' is not supported yet}
+      \ifthenelse{\equal{\sht@degree}{master}}{
+        \sht@maketitle@graduate{硕士}
+        \sht@maketitle@graduate@en{thesis}
+      }{
+        \sht@error{Degree type `\sht@degree' is not supported yet}
+      }
     }
-  }
+  \fi
   \ifthenelse{\not \boolean{sht@anonymous}}{%
-    \makedeclarations%
+    \ifsht@undergraduate%
+      \makedeclarations@undergraduate%
+    \else%
+      \makedeclarations%
+    \fi
   }{}
 }
 % ------------------------------------------------------------------------------
@@ -926,9 +1061,9 @@
     \hfill{}
     \ifdefempty{\sht@secret@level}{}{%
       密级：%
-      \ulenhance{%
-        \ulextend[50pt]{%
-          \hspace*{-\ulhshift} \zihao{5} \sht@secret@level%
+      \shifted@uline[1pt][0pt]{%
+        \shifted@box[50pt][0pt]{%
+          \zihao{5} \sht@secret@level%
         }%
       }%
     }
@@ -943,7 +1078,7 @@
 
     \vspace*{\stretch{3}}
 
-    {\zihao{-3}\heiti \ulenhance[1.5pt]{\sht@title}}
+    {\zihao{-3}\heiti \shifted@uline[1.5pt][0pt]{\sht@title}}
 
     \vspace*{\stretch{3}}
 
@@ -953,7 +1088,7 @@
       \def\arraystretch{1.3}
       \begin{tabular}{llc}
         作者姓名：&
-          \multicolumn{2}{c}{\ulenhance[1.2pt]{\ulextend{%
+          \multicolumn{2}{c}{\shifted@uline{\shifted@box{%
             \ifsht@anonymous%
               \sht@anonymous@str%
             \else%
@@ -961,7 +1096,7 @@
             \fi%
           }}} \\
         指导教师：&
-          \multicolumn{2}{c}{\ulenhance[1.2pt]{\ulextend{%
+          \multicolumn{2}{c}{\shifted@uline{\shifted@box{%
             \ifsht@anonymous%
               \sht@anonymous@str%
             \else%
@@ -969,14 +1104,14 @@
             \fi%
           }}} \\
         \ifdefempty{\sht@supervisor@institution}{}{ &
-          \multicolumn{2}{c}{\ulenhance[1.2pt]{\ulextend{\sht@supervisor@institution}}} \\
+          \multicolumn{2}{c}{\shifted@uline{\shifted@box{\sht@supervisor@institution}}} \\
         }
         学位类别：&
-          \multicolumn{2}{c}{\ulenhance[1.2pt]{\ulextend{\sht@degree@name}}} \\
+          \multicolumn{2}{c}{\shifted@uline{\shifted@box{\sht@degree@name}}} \\
         一级学科：&
-          \multicolumn{2}{c}{\ulenhance[1.2pt]{\ulextend{\sht@discipline@level@i}}} \\
+          \multicolumn{2}{c}{\shifted@uline{\shifted@box{\sht@discipline@level@i}}} \\
         \multicolumn{2}{l}{学校/学院名称：} &
-          \ulenhance[1.2pt]{\ulextend[318pt]{\sht@institution}} \\
+          \shifted@uline{\shifted@box[\cover@tab@last@entry@width]{\sht@institution}} \\
       \end{tabular}
     }
 
@@ -999,7 +1134,7 @@
 
     \vspace*{50pt}
 
-    {\zihao{-3}\bfseries \ulenhance[1.5pt]{\sht@title@en}}
+    {\zihao{-3}\bfseries \shifted@uline[1.5pt][0pt]{\sht@title@en}}
 
     \vspace*{\stretch{3}}
 
@@ -1046,6 +1181,124 @@
   \cleardoublepage
 }
 % ------------------------------------------------------------------------------
+%   Bachelor covers
+% ------------------------------------------------------------------------------
+\def\cover@tab@entry@width@undergraduate{300pt}
+\def\cover@tab@uline@thick@undergraduate{1pt}
+\def\content@left@shift@en{2.5\ccwd}
+\newcommand{\sht@maketitle@undergraduate}{%
+  \intobmk*{\cleardoublepage}{封面}
+  \thispagestyle{empty}
+  \sht@schoollogo@undergraduate
+  \begin{center}
+    \linespread{1.6}
+
+    \vspace*{\stretch{20}}
+
+    {\zihao{2}\bfseries 本科毕业论文（设计）}
+
+    \vspace*{\stretch{54}}
+
+    {
+      \zihao{4}
+      \def\tabcolsep{1pt}
+      \def\arraystretch{1.3}
+      \begin{tabular}{cc}
+        题\hspace{2\ccwd}目：&
+          \sht@lines@to@tab[\cover@tab@uline@thick@undergraduate]%
+            [\cover@tab@entry@width@undergraduate]{\sht@title} \\
+        学生姓名：&
+          \shifted@uline[\cover@tab@uline@thick@undergraduate]%
+            {\shifted@box[\cover@tab@entry@width@undergraduate]{\sht@author}} \\
+        学\hspace{2\ccwd}号：&
+          \shifted@uline[\cover@tab@uline@thick@undergraduate]%
+            {\shifted@box[\cover@tab@entry@width@undergraduate]{\sht@author@id}} \\
+        入学年份：&
+          \shifted@uline[\cover@tab@uline@thick@undergraduate]%
+            {\shifted@box[\cover@tab@entry@width@undergraduate]{\sht@entrance@year}} \\
+        所在学院：&
+          \shifted@uline[\cover@tab@uline@thick@undergraduate]%
+            {\shifted@box[\cover@tab@entry@width@undergraduate]{\sht@institution}} \\
+        攻读专业：&
+          \shifted@uline[\cover@tab@uline@thick@undergraduate]%
+            {\shifted@box[\cover@tab@entry@width@undergraduate]{\sht@discipline}} \\
+        指导教师：&
+          \shifted@uline[\cover@tab@uline@thick@undergraduate]%
+            {\shifted@box[\cover@tab@entry@width@undergraduate]{\sht@supervisor}} \\
+      \end{tabular}
+    }
+
+    \vspace*{\stretch{70}}
+
+    {
+      \zihao{-4}
+      上海科技大学
+      \par\sht@date
+    }
+
+    \vspace{\stretch{11}}
+  \end{center}
+  \clearpage
+  \thispagestyle{empty}
+  \cleardoublepage
+}
+\newcommand{\sht@maketitle@undergraduate@en}{%
+  \intobmk*{\cleardoublepage}{Cover}
+  \thispagestyle{empty}
+  \sht@schoollogo@undergraduate
+  \begin{center}
+    \linespread{1.6}
+
+    \vspace*{\stretch{20}}
+
+    {\zihao{2}\bfseries\sffamily THESIS}
+
+    \vspace*{\stretch{54}}
+
+    {
+      \zihao{4}
+      \def\tabcolsep{1pt}
+      \def\arraystretch{1.3}
+      \begin{tabular}{lc}
+        Subject: &
+          \sht@lines@to@tab[\cover@tab@uline@thick@undergraduate]%
+            [\cover@tab@entry@width@undergraduate][\content@left@shift@en]{\sht@title@en} \\
+        Student Name: &
+          \shifted@uline[\cover@tab@uline@thick@undergraduate]%
+            {\shifted@box[\cover@tab@entry@width@undergraduate][\content@left@shift@en]{\sht@author@en}} \\
+        Student ID: &
+          \shifted@uline[\cover@tab@uline@thick@undergraduate]%
+            {\shifted@box[\cover@tab@entry@width@undergraduate][\content@left@shift@en]{\sht@author@id}} \\
+        Year of Entrance: &
+          \shifted@uline[\cover@tab@uline@thick@undergraduate]%
+            {\shifted@box[\cover@tab@entry@width@undergraduate][\content@left@shift@en]{\sht@entrance@year}} \\
+        School: &
+          \shifted@uline[\cover@tab@uline@thick@undergraduate]%
+            {\shifted@box[\cover@tab@entry@width@undergraduate][\content@left@shift@en]{\sht@institution@en}} \\
+        Major: &
+          \shifted@uline[\cover@tab@uline@thick@undergraduate]%
+            {\shifted@box[\cover@tab@entry@width@undergraduate][\content@left@shift@en]{\sht@discipline@en}} \\
+        Advisor: &
+          \shifted@uline[\cover@tab@uline@thick@undergraduate]%
+            {\shifted@box[\cover@tab@entry@width@undergraduate][\content@left@shift@en]{\sht@supervisor@en}} \\
+      \end{tabular}
+    }
+
+    \vspace*{\stretch{70}}
+
+    {
+      \zihao{-4}
+      ShanghaiTech University
+      \par Date:~\sht@date@en
+    }
+
+    \vspace{\stretch{11}}
+  \end{center}
+  \clearpage
+  \thispagestyle{empty}
+  \cleardoublepage
+}
+% ------------------------------------------------------------------------------
 %   Declarations
 % ------------------------------------------------------------------------------
 \newcommand{\makedeclarations}{%
@@ -1057,7 +1310,7 @@
     \vspace*{2ex}
 
     \begin{center}
-      {\zihao{4}\bfseries\sffamily 上海科技大学\\研究生学位论文原创性声明}
+      \zihao{4}\bfseries\sffamily 上海科技大学\\研究生学位论文原创性声明
     \end{center}
 
     本人郑重声明:所呈交的学位论文是本人在导师的指导下独立进行研究工作所取得的成果。%
@@ -1067,14 +1320,14 @@
 
     \vspace*{3ex}
 
-    {\hfill{} {作者签名：\hspace*{14em}}}
+    {\hfill{}作者签名：\hspace*{14em}}
 
-    {\hfill{} {日\quad\quad 期：\hspace*{14em}}}
+    {\hfill{}日\hspace*{2\ccwd}期：\hspace*{14em}}
 
     \vspace*{6ex}
 
     \begin{center}
-      {\zihao{4}\bfseries\sffamily 上海科技大学\\学位论文授权使用声明}
+      \zihao{4}\bfseries\sffamily 上海科技大学\\学位论文授权使用声明
     \end{center}
 
     本人完全了解并同意遵守上海科技大学有关保存和使用学位论文的规定，即上海科技大学有权%
@@ -1086,9 +1339,9 @@
 
     \vspace*{3ex}
 
-    {\hfill{} {作者签名：\hspace*{10em} 导师签名：\hspace*{9em}}}
+    {\hfill{}作者签名：\hspace*{10em}导师签名：\hspace*{9em}}
 
-    {\hfill{} {日\quad\quad 期：\hspace*{10em} 日\quad\quad 期：\hspace*{9em}}}
+    {\hfill{}日\hspace*{2\ccwd}期：\hspace*{10em}日\hspace*{2\ccwd}期：\hspace*{9em}}
 
     \vspace{3ex}
   }
@@ -1096,22 +1349,145 @@
   \thispagestyle{empty}
   \cleardoublepage
 }
+\newcommand{\makedeclarations@undergraduate}{%
+  \intobmk*{\cleardoublepage}{声明}
+  % P1: 学术诚信声明
+  \thispagestyle{empty}
+  {
+    \linespread{1.6}\zihao{4}
+
+    \vspace*{\stretch{1}}
+
+    \begin{center}
+      \zihao{-2}\bfseries\sffamily 上海科技大学\\毕业论文(设计)学术诚信声明
+    \end{center}
+
+    \vspace*{\stretch{1}}
+
+    本人郑重声明：所呈交的毕业论文（设计），是本人在导师的指导下，独立进行研究工作%
+    所取得的成果。除文中已经注明引用的内容外，本论文不包含任何其他个人或集体已经发表%
+    或撰写过的作品成果。对本文的研究做出重要贡献的个人和集体，均已在文中以明确方式%
+    标明。本人完全意识到本声明的法律结果由本人承担。
+
+    \vspace*{\stretch{3}}
+
+    \hfill{}作者签名：\hspace*{9.5\ccwd}
+
+    \vspace*{\stretch{1}}
+
+    \hfill{}日\hspace*{2\ccwd}期：%
+    \hspace*{2.5\ccwd}年%
+    \hspace*{1.5\ccwd}月%
+    \hspace*{1.5\ccwd}日%
+    \hspace*{1\ccwd}
+
+    \vspace{\stretch{6}}
+  }
+  \clearpage
+  % P2: empty
+  \thispagestyle{empty}
+  \cleardoublepage
+  % P3: 版权使用授权书
+  \thispagestyle{empty}
+  {
+    \linespread{1.6}\zihao{4}
+
+    \vspace*{\stretch{1}}
+
+    \begin{center}
+      \zihao{-2}\bfseries\sffamily 上海科技大学\\毕业论文（设计）版权使用授权书
+    \end{center}
+
+    \vspace*{\stretch{1}}
+
+    本毕业论文（设计）作者同意学校保留并向国家有关部门或机构送交论文的复印件和电子版，%
+    允许论文被查阅和借阅。本人授权上海科技大学可以将本毕业论文（设计）的全部或部分内容%
+    编入有关数据库进行检索，可以采用影印、缩印或扫描等复制手段保存和汇编本%
+    毕业论文（设计）。
+
+    \hspace*{6\ccwd}\textbf{保\hspace*{1\ccwd}密}$\square$，%
+    在\uline{\hspace*{2\ccwd}}年解密后适用本授权书。
+
+    本论文属于
+
+    \hspace*{6\ccwd}\textbf{不保密}$\square$。
+
+    （请在以上方框内打“\checkmark”）
+
+    \vspace*{\stretch{3}}
+
+    \noindent 作者签名：\hspace{12.5\ccwd}指导教师签名：
+
+    \vspace*{\stretch{1}}
+
+    \noindent 日期：%
+    \hspace*{2.5\ccwd}年%
+    \hspace*{1.5\ccwd}月%
+    \hspace*{1.5\ccwd}日%
+    \hspace*{6\ccwd}日期：%
+    \hspace*{2.5\ccwd}年%
+    \hspace*{1.5\ccwd}月%
+    \hspace*{1.5\ccwd}日
+
+    \vspace{\stretch{4}}
+  }
+  \clearpage
+  % P4: empty
+  \thispagestyle{empty}
+  \cleardoublepage
+}
 % ------------------------------------------------------------------------------
 %   Abstract
 % ------------------------------------------------------------------------------
-\newenvironment{abstract}{%
+\newenvironment{abstract}[1][\sht@null@arg]{%
   \cleardoublepage%
+  \ifthenelse{\equal{#1}{flattitle}}{%
+    \def\sht@abs@title{\sht@flat@title}%
+  }{%
+    \def\sht@abs@title{\sht@title}%
+  }%
+  \ifsht@undergraduate
+    \let\clearpage\relax%
+    \vspace*{\baselineskip}%
+    \begin{center}%
+      \zihao{3}\bfseries\sffamily\sht@abs@title%
+    \end{center}%
+    \vspace*{\baselineskip}%
+    \ctexset{chapter/format += \zihao{4}, chapter/beforeskip = 0pt}%
+  \fi
   \intobmk\chapter*{摘\hspace{1\ccwd}要}%
 }{%
   \vspace{\baselineskip}%
-  \par\noindent{\bfseries 关键词：} \sht@keywords%
+  \ifsht@undergraduate%
+    \par\noindent{\zihao{-4}\bfseries\sffamily 关键词：} \sht@keywords%
+  \else%
+    \par\noindent{\bfseries 关键词：} \sht@keywords%
+  \fi%
 }
-\newenvironment{abstract*}{%
+\newenvironment{abstract*}[1][\sht@null@arg]{%
   \cleardoublepage%
+  \ifthenelse{\equal{#1}{flattitle}}{%
+    \def\sht@abs@title@en{\sht@flat@title@en}%
+  }{%
+    \def\sht@abs@title@en{\sht@title@en}%
+  }%
+  \ifsht@undergraduate
+    \let\clearpage\relax%
+    \vspace*{\baselineskip}%
+    \begin{center}%
+      \zihao{3}\bfseries\sht@abs@title@en%
+    \end{center}%
+    \vspace*{\baselineskip}%
+    \ctexset{chapter/format += \zihao{4}\rmfamily, chapter/beforeskip = 0pt}%
+  \fi
   \intobmk\chapter*{Abstract}%
 }{%
   \vspace{\baselineskip}%
-  \par\noindent{\bfseries Key Words:} \sht@keywords@en%
+  \ifsht@undergraduate%
+    \par\noindent{\zihao{-4}\bfseries Key words:} \sht@keywords@en%
+  \else%
+    \par\noindent{\bfseries Key Words:} \sht@keywords@en%
+  \fi%
 }
 % ------------------------------------------------------------------------------
 %   Nomenclatures
@@ -1125,10 +1501,17 @@
     \intobmk\chapter*{符号列表}%
   \fi
   \stepcounter{sht@nomenclature@cnt}
-  \ifthenelse{\not \equal{#1}{\sht@null@arg}}{
-    \section*{#1}
+  \ifthenelse{\not \equal{#1}{\sht@null@arg}}{%
+    \ifsht@undergraduate%
+      \ctexset{section/format += \zihao{-4}, section/indent = 0pt}%
+    \fi%
+    \section*{#1}%
   }{
-    \par\vspace{24pt}
+    \ifsht@undergraduate%
+      \par\vspace{18pt}%
+    \else%
+      \par\vspace{24pt}%
+    \fi%
   }
   \renewcommand{\item}[3][\sht@null@arg]{
     \ifthenelse{\not \equal{##1}{\sht@null@arg}}{
@@ -1145,11 +1528,15 @@
 % ------------------------------------------------------------------------------
 %   Bibliography
 % ------------------------------------------------------------------------------
-\providecommand{\bibstyle@authoryear}{\bibpunct{(}{)}{;}{a}{,}{,}}
-\citestyle{authoryear}
-\bibliographystyle{gbt7714-plain}
+\ifsht@undergraduate
+  \bibliographystyle{gbt7714-numerical}
+  \citestyle{super}
+\else
+  \bibliographystyle{gbt7714-author-year}
+  \citestyle{authoryear}
+  \renewcommand*{\bibfont}{\small}
+\fi
 \setlength{\bibsep}{0.0ex plus 0.2ex minus 0.2ex}
-\renewcommand*{\bibfont}{\small}
 \providecommand{\makebiblio}[1][reference]{%
   \intotoc*{\cleardoublepage}{\bibname}%
   \bibliography{#1}%
@@ -1162,7 +1549,11 @@
   \origin@appendix
   \intotoc*{\cleardoublepage}{\appendixname}%
   \settocdepth{part}%
-  \pagestyle{LRPageNumberedAppendix}%
+  \ifsht@undergraduate%
+    \pagestyle{MNNumberedWithLogo}%
+  \else%
+    \pagestyle{LRNumberedAppendix}%
+  \fi%
 }
 % ------------------------------------------------------------------------------
 %   Backmatter
@@ -1172,7 +1563,14 @@
 \renewcommand{\backmatter}{%
   \origin@backmatter%
   \settocdepth{chapter}%
-  \pagestyle{LRPageNumbered}%
+  \ifsht@undergraduate%
+    \pagestyle{MNNumberedWithLogo}%
+  \else%
+    \pagestyle{LRNumbered}%
+  \fi%
+  \ifsht@undergraduate%
+    \ctexset{section/format += \zihao{-4}, section/indent = 0pt}%
+  \fi%
 }
 \newcounter{sht@resume@cnt}
 \setcounter{sht@resume@cnt}{0}

@@ -23,6 +23,7 @@ _minted*
 *.lof
 *.nav
 *.snm
+build*/
 
 # ignore compiled docuemnt within root
 *.pdf
